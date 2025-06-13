@@ -1175,6 +1175,11 @@ function searchPrompts() {
   });
 }
 
+// Clear selected category when typing in category input
+document.getElementById("newCategoryInput").addEventListener("input", function() {
+  selectedCategoryFromDropdown = null;
+});
+
 document.getElementById("addCategoryBtn").onclick = function() {
   const cn = document.getElementById("newCategoryInput").value.trim();
   if (cn) {
@@ -1186,32 +1191,53 @@ document.getElementById("addCategoryBtn").onclick = function() {
     renderCategories();
     toggleCategoryBox(nc.id);
     document.getElementById("newCategoryInput").value = "";
+    selectedCategoryFromDropdown = null; // Reset
   }
 };
+
+// Variable to track selected category from dropdown
+let selectedCategoryFromDropdown = null;
 
 document.getElementById("addCategoryBtn2").onclick = function() {
   const cn = document.getElementById("newCategoryInput2").value.trim();
   const selectedCategoryBox = document.querySelector('.category-box[style*="block"]');
   
-  if (cn && cn.length >= 3 && selectedCategoryBox) {
-    // Comprehensive validation for subcategory name
-    if (cn.match(/^[a-z]{1,2}$/i) || 
-        cn.match(/^[a-z\s]*v$/i) || 
-        cn.match(/^y+$/i) || 
-        cn.match(/^[a-z]{1,6}\s*v?\s*$/i) ||
-        cn.match(/^[bcdfghjklmnpqrstvwxyz]+$/i) ||
-        cn.match(/^[cda]+$/i) ||
-        cn.match(/^c+d*a*$/i) ||
-        cn.match(/^\w{1,3}$/i) ||
-        !cn.match(/[aeiou]/i)) {
-      alert("Nome sottocategoria non valido. Inserisci un nome più descrittivo (minimo 3 caratteri, deve contenere almeno una vocale).");
+  if (cn && cn.length >= 2) {
+    // More permissive validation - only block clearly invalid patterns
+    if (cn.length < 2 || 
+        cn.match(/^[a-z]{1}$/i) || // single letter only
+        cn.match(/^y+$/i) || // only y's
+        cn.match(/^[xyz]+$/i) || // only x, y, z
+        cn.match(/^[cda]{1,3}$/i) || // only c, d, a (short)
+        cn.match(/^mb[a-z]*v$/i) || // specific invalid pattern
+        cn.match(/^[qwerty]{1,4}$/i) || // keyboard mashing (short)
+        cn.match(/^[asdf]{1,4}$/i)) { // keyboard mashing (short)
+      alert("Nome sottocategoria non valido. Inserisci un nome più descrittivo (minimo 2 caratteri).");
       return;
     }
     
-    const parentCategoryId = selectedCategoryBox.dataset.categoryId;
-    const parentCategory = categories.find(c => c.id === parentCategoryId);
+    // Priority: 1) Selected from dropdown, 2) Visible category box, 3) Find by name match
+    let parentCategory = null;
+    let parentCategoryId = null;
     
-    if (parentCategory) {
+    if (selectedCategoryFromDropdown) {
+      parentCategory = selectedCategoryFromDropdown;
+      parentCategoryId = parentCategory.id;
+    } else if (selectedCategoryBox) {
+      parentCategoryId = selectedCategoryBox.dataset.categoryId;
+      parentCategory = categories.find(c => c.id === parentCategoryId);
+    } else {
+      // Try to find category by matching name in the first input field
+      const categoryName = document.getElementById("newCategoryInput").value.trim();
+      if (categoryName) {
+        parentCategory = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        if (parentCategory) {
+          parentCategoryId = parentCategory.id;
+        }
+      }
+    }
+    
+    if (parentCategory && parentCategoryId) {
       // Initialize subcategories array if it doesn't exist
       if (!parentCategory.subcategories) {
         parentCategory.subcategories = [];
@@ -1236,19 +1262,23 @@ document.getElementById("addCategoryBtn2").onclick = function() {
       renderCategories();
       toggleCategoryBox(parentCategoryId);
       document.getElementById("newCategoryInput2").value = "";
+      selectedCategoryFromDropdown = null; // Reset after use
+    } else {
+      // If no parent category is found, create a main category
+      const nc = { id: generateUniqueId(), name: sanitizeHTML(cn), prompts: [] };
+      pushToHistory();
+      categories.push(nc);
+      sortCategoriesAndPrompts();
+      saveToLocalStorage();
+      renderCategories();
+      toggleCategoryBox(nc.id);
+      document.getElementById("newCategoryInput2").value = "";
+      selectedCategoryFromDropdown = null; // Reset after use
     }
-  } else if (cn && cn.length >= 2 && !selectedCategoryBox) {
-    // If no category is selected, create a main category
-    const nc = { id: generateUniqueId(), name: sanitizeHTML(cn), prompts: [] };
-    pushToHistory();
-    categories.push(nc);
-    sortCategoriesAndPrompts();
-    saveToLocalStorage();
-    renderCategories();
-    toggleCategoryBox(nc.id);
-    document.getElementById("newCategoryInput2").value = "";
   } else if (cn.length < 2) {
     alert("Il nome deve contenere almeno 2 caratteri.");
+  } else if (!cn) {
+    alert("Inserisci un nome per la categoria/sottocategoria.");
   }
 };
 
@@ -1260,6 +1290,7 @@ document.getElementById("categorySelect").addEventListener("change", function() 
     const selectedCategory = categories.find(c => c.id === selectedCategoryId);
     if (selectedCategory) {
       document.getElementById("newCategoryInput").value = selectedCategory.name;
+      selectedCategoryFromDropdown = selectedCategory; // Track selected category
     }
     toggleCategoryBox(selectedCategoryId);
     this.value = ""; // Reset dropdown
