@@ -305,10 +305,29 @@ a:hover {
 
   <div class="top-section mb-4 w-100">
     <div class="new-category-section w-100">
-      <div class="input-group mb-3">
-        <input type="text" id="newCategoryInput" class="form-control" data-placeholder="newCategory">
-        <div class="input-group-append">
-          <button id="addCategoryBtn" class="btn btn-success"><i class="fas fa-plus"></i></button>
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <div class="input-group">
+            <select id="categorySelect" class="form-control">
+              <option value="">Seleziona categoria esistente...</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="input-group">
+            <input type="text" id="newCategoryInput" class="form-control" data-placeholder="newCategory">
+            <div class="input-group-append">
+              <button id="addCategoryBtn" class="btn btn-success"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="input-group">
+            <input type="text" id="newCategoryInput2" class="form-control" data-placeholder="newCategory">
+            <div class="input-group-append">
+              <button id="addCategoryBtn2" class="btn btn-success"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -462,7 +481,7 @@ const categories = [],
         it: {
           promptSaver: "Prompt Saver",
           searchPromptCategoryTag: "Cerca prompt, categoria o tag...",
-          newCategory: "Nuova categoria",
+          newCategory: "Aggiungi a categoria",
           backupData: "Backup Dati",
           importBackup: "Importa Backup",
           favorites: "Preferiti",
@@ -624,6 +643,25 @@ function loadFromLocalStorage() {
   const s = localStorage.getItem("categories");
   if (s) {
     const p = JSON.parse(s);
+    
+    // Manual cleanup for existing invalid subcategories
+    p.forEach(c => {
+      if (c.subcategories) {
+        c.subcategories = c.subcategories.filter(subCat => {
+          const name = subCat.name ? subCat.name.trim() : "";
+          // Remove anything that looks like "mbvmb v", "yyyy", or similar patterns
+          return name.length >= 3 && 
+                 !name.match(/^[a-z\s]*v$/i) && 
+                 !name.match(/^y+$/i) && 
+                 !name.match(/^mb[a-z]*\s*v?$/i) &&
+                 !name.match(/^[a-z]{1,6}\s*v?\s*$/i);
+        });
+        
+        if (c.subcategories.length === 0) {
+          delete c.subcategories;
+        }
+      }
+    });
     p.forEach(c => {
       c.id = c.id || generateUniqueId();
       c.name = sanitizeHTML(c.name);
@@ -635,6 +673,34 @@ function loadFromLocalStorage() {
         pr.tags = pr.tags || [];
         pr.favorite = pr.favorite || false;
       });
+      
+      // Clean up invalid subcategories - more thorough filtering
+      if (c.subcategories) {
+        c.subcategories = c.subcategories.filter(subCat => {
+          if (!subCat.name || subCat.name.trim() === "") return false;
+          
+          const cleanName = subCat.name.trim();
+          
+          // Remove various invalid patterns
+          if (cleanName.match(/^[a-z\s]*v$/i)) return false; // "mbmb v"
+          if (cleanName.match(/^y+$/i)) return false; // "yyyy"
+          if (cleanName.match(/^[a-z]+\s*v\s*$/i)) return false; // any letters followed by v
+          if (cleanName.match(/^mb[a-z]*\s*v?$/i)) return false; // patterns starting with "mb"
+          if (cleanName.match(/^[a-z]{1,6}\s*v?\s*$/i)) return false; // short random letters (increased from 4 to 6)
+          if (cleanName.length < 3) return false; // too short (increased from 2 to 3)
+          
+          return true;
+        }).map(subCat => ({
+          ...subCat,
+          name: sanitizeHTML(subCat.name.trim()),
+          prompts: subCat.prompts || []
+        }));
+        
+        // If all subcategories were filtered out, remove the subcategories property
+        if (c.subcategories.length === 0) {
+          delete c.subcategories;
+        }
+      }
     });
     categories.push(...p);
     sortCategoriesAndPrompts();
@@ -651,6 +717,12 @@ function sortCategoriesAndPrompts() {
   categories.sort((a, b) => a.name.localeCompare(b.name, currentLanguage));
   categories.forEach(c => {
     c.prompts.sort((a, b) => a.title.localeCompare(b.title, currentLanguage));
+    if (c.subcategories) {
+      c.subcategories.sort((a, b) => a.name.localeCompare(b.name, currentLanguage));
+      c.subcategories.forEach(sub => {
+        sub.prompts.sort((a, b) => a.title.localeCompare(b.title, currentLanguage));
+      });
+    }
   });
 }
 
@@ -677,6 +749,23 @@ function renderCategories() {
     const box = createCategoryBox(c);
     box.style.display = "none";
     catBoxC.appendChild(box);
+  });
+
+  updateCategoryDropdowns();
+}
+
+function updateCategoryDropdowns() {
+  const select1 = document.getElementById("categorySelect");
+  
+  // Clear existing options except the first one
+  select1.innerHTML = '<option value="">Seleziona categoria esistente...</option>';
+  
+  // Add categories to dropdown
+  categories.forEach(c => {
+    const option1 = document.createElement("option");
+    option1.value = c.id;
+    option1.textContent = c.name;
+    select1.appendChild(option1);
   });
 }
 
@@ -745,6 +834,31 @@ function createCategoryBox(c) {
   ptc.className = "prompt-titles-container d-flex flex-wrap";
   const spc = document.createElement("div");
   spc.className = "selected-prompt-container";
+
+  // Add subcategories if they exist
+  if (c.subcategories && c.subcategories.length > 0) {
+    const subCatContainer = document.createElement("div");
+    subCatContainer.className = "subcategories-container mb-3";
+    
+    const subCatTitle = document.createElement("h6");
+    subCatTitle.textContent = "Sottocategorie:";
+    subCatTitle.className = "mb-2";
+    subCatContainer.appendChild(subCatTitle);
+    
+    const subCatButtons = document.createElement("div");
+    subCatButtons.className = "d-flex flex-wrap";
+    
+    c.subcategories.forEach(subCat => {
+      const subBtn = document.createElement("button");
+      subBtn.className = "btn btn-outline-secondary btn-sm mr-2 mb-2";
+      subBtn.textContent = subCat.name;
+      subBtn.onclick = () => displaySubcategoryPrompts(subCat, c.id, cb);
+      subCatButtons.appendChild(subBtn);
+    });
+    
+    subCatContainer.appendChild(subCatButtons);
+    cb.appendChild(subCatContainer);
+  }
 
   c.prompts.forEach(p => {
     ptc.appendChild(createPromptTitleDiv(p, c.id));
@@ -919,7 +1033,7 @@ function toggleCategoryBox(cId) {
   fb.classList.add("btn-secondary");
 }
 
-function showNewPromptForm(cId) {
+function showNewPromptForm(cId, subCatId = null) {
   quillNewPrompt.setContents([]);
   initTagsInput("newPromptTags");
   $("#newPromptModal").modal("show");
@@ -940,8 +1054,20 @@ function showNewPromptForm(cId) {
         tags: tags.map(t => sanitizeHTML(t)),
         favorite: false
       };
+      
       const c = categories.find(cc => cc.id === cId);
-      c.prompts.push(np);
+      
+      if (subCatId) {
+        // Add to subcategory
+        const subCat = c.subcategories.find(sc => sc.id === subCatId);
+        if (subCat) {
+          subCat.prompts.push(np);
+        }
+      } else {
+        // Add to main category
+        c.prompts.push(np);
+      }
+      
       pushToHistory();
       sortCategoriesAndPrompts();
       saveToLocalStorage();
@@ -1048,6 +1174,77 @@ document.getElementById("addCategoryBtn").onclick = function() {
     document.getElementById("newCategoryInput").value = "";
   }
 };
+
+document.getElementById("addCategoryBtn2").onclick = function() {
+  const cn = document.getElementById("newCategoryInput2").value.trim();
+  const selectedCategoryBox = document.querySelector('.category-box[style*="block"]');
+  
+  if (cn && cn.length >= 2 && selectedCategoryBox) {
+    // Validate subcategory name
+    if (cn.match(/^[a-z\s]*v$/i) || cn.match(/^y+$/i) || cn.match(/^[a-z]{1,4}\s*v?\s*$/i)) {
+      alert("Nome sottocategoria non valido. Inserisci un nome più descrittivo.");
+      return;
+    }
+    
+    const parentCategoryId = selectedCategoryBox.dataset.categoryId;
+    const parentCategory = categories.find(c => c.id === parentCategoryId);
+    
+    if (parentCategory) {
+      // Initialize subcategories array if it doesn't exist
+      if (!parentCategory.subcategories) {
+        parentCategory.subcategories = [];
+      }
+      
+      // Check if subcategory name already exists
+      if (parentCategory.subcategories.find(sub => sub.name.toLowerCase() === cn.toLowerCase())) {
+        alert("Una sottocategoria con questo nome esiste già.");
+        return;
+      }
+      
+      const newSubcategory = { 
+        id: generateUniqueId(), 
+        name: sanitizeHTML(cn), 
+        prompts: [] 
+      };
+      
+      pushToHistory();
+      parentCategory.subcategories.push(newSubcategory);
+      sortCategoriesAndPrompts();
+      saveToLocalStorage();
+      renderCategories();
+      toggleCategoryBox(parentCategoryId);
+      document.getElementById("newCategoryInput2").value = "";
+    }
+  } else if (cn && cn.length >= 2 && !selectedCategoryBox) {
+    // If no category is selected, create a main category
+    const nc = { id: generateUniqueId(), name: sanitizeHTML(cn), prompts: [] };
+    pushToHistory();
+    categories.push(nc);
+    sortCategoriesAndPrompts();
+    saveToLocalStorage();
+    renderCategories();
+    toggleCategoryBox(nc.id);
+    document.getElementById("newCategoryInput2").value = "";
+  } else if (cn.length < 2) {
+    alert("Il nome deve contenere almeno 2 caratteri.");
+  }
+};
+
+// Handle category dropdown selections
+document.getElementById("categorySelect").addEventListener("change", function() {
+  const selectedCategoryId = this.value;
+  if (selectedCategoryId) {
+    // Find the selected category and populate the input field
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    if (selectedCategory) {
+      document.getElementById("newCategoryInput").value = selectedCategory.name;
+    }
+    toggleCategoryBox(selectedCategoryId);
+    this.value = ""; // Reset dropdown
+  }
+});
+
+
 
 document.getElementById("searchBtn").onclick = searchPrompts;
 document.getElementById("searchInput").addEventListener("keydown", function(e) {
@@ -1267,6 +1464,43 @@ function renderFavorites() {
     nf.textContent = translations[currentLanguage]["noFavoritesFound"];
     pdc.appendChild(nf);
   }
+}
+
+function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
+  const ptc = categoryBox.querySelector(".prompt-titles-container");
+  const spc = categoryBox.querySelector(".selected-prompt-container");
+  
+  // Clear current prompts display
+  ptc.innerHTML = "";
+  spc.innerHTML = "";
+  
+  // Add back button
+  const backBtn = document.createElement("button");
+  backBtn.className = "btn btn-secondary btn-sm mr-2 mb-2";
+  backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Torna alla categoria';
+  backBtn.onclick = () => {
+    renderCategories();
+    toggleCategoryBox(parentCategoryId);
+  };
+  ptc.appendChild(backBtn);
+  
+  // Add subcategory title
+  const subTitle = document.createElement("h5");
+  subTitle.textContent = subCat.name;
+  subTitle.className = "mb-3";
+  ptc.appendChild(subTitle);
+  
+  // Add subcategory prompts
+  subCat.prompts.forEach(p => {
+    ptc.appendChild(createPromptTitleDiv(p, parentCategoryId));
+  });
+  
+  // Add button to create new prompt in subcategory
+  const newPromptBtn = document.createElement("button");
+  newPromptBtn.className = "btn btn-success btn-sm";
+  newPromptBtn.innerHTML = '<i class="fas fa-plus"></i> Nuovo Prompt';
+  newPromptBtn.onclick = () => showNewPromptForm(parentCategoryId, subCat.id);
+  ptc.appendChild(newPromptBtn);
 }
 
 function displayFavoritePrompt(p, cId, cont, btn) {
