@@ -544,7 +544,7 @@ const categories = [],
         }
       };
 
-let currentEdit = { categoryId: null, promptId: null },
+let currentEdit = { categoryId: null, promptId: null, subcategoryId: null },
     currentLanguage = "it",
     currentTheme = "dark",
     historyStack = [],
@@ -663,8 +663,10 @@ function generateUniqueId() {
 
 function loadFromLocalStorage() {
   const s = localStorage.getItem("categories");
+  console.log("Caricamento da localStorage:", s ? "Dati trovati" : "Nessun dato trovato");
   if (s) {
     const p = JSON.parse(s);
+    console.log("Categorie caricate:", p.length);
     
     p.forEach(c => {
       c.id = c.id || generateUniqueId();
@@ -743,7 +745,13 @@ function loadFromLocalStorage() {
 }
 
 function saveToLocalStorage() {
-  localStorage.setItem("categories", JSON.stringify(categories));
+  try {
+    const dataToSave = JSON.stringify(categories);
+    localStorage.setItem("categories", dataToSave);
+    console.log("Dati salvati nel localStorage. Numero categorie:", categories.length);
+  } catch (error) {
+    console.error("Errore nel salvataggio localStorage:", error);
+  }
 }
 
 function sortCategoriesAndPrompts() {
@@ -908,7 +916,10 @@ function createCategoryBox(c) {
 
   aeBtn.onclick = (e) => {
     e.stopPropagation();
-    if (cb.selectedPrompt) openEditModal(c.id, cb.selectedPrompt.id);
+    if (cb.selectedPrompt) {
+      const subCatId = cb.selectedSubcategoryId || null;
+      openEditModal(c.id, cb.selectedPrompt.id, subCatId);
+    }
   };
   acBtn.onclick = (e) => {
     e.stopPropagation();
@@ -1236,6 +1247,7 @@ document.getElementById("addCategoryBtn").onclick = function() {
     categories.push(nc);
     sortCategoriesAndPrompts();
     saveToLocalStorage();
+    console.log("Categoria salvata:", nc.name, "Totale categorie:", categories.length);
     renderCategories();
     toggleCategoryBox(nc.id);
     document.getElementById("newCategoryInput").value = "";
@@ -1307,6 +1319,7 @@ document.getElementById("addCategoryBtn2").onclick = function() {
       parentCategory.subcategories.push(newSubcategory);
       sortCategoriesAndPrompts();
       saveToLocalStorage();
+      console.log("Sottocategoria salvata:", newSubcategory.name, "in categoria:", parentCategory.name);
       renderCategories();
       toggleCategoryBox(parentCategoryId);
       document.getElementById("newCategoryInput2").value = "";
@@ -1397,11 +1410,22 @@ document.getElementById("importFile").addEventListener("change", function(e) {
   }
 });
 
-function openEditModal(cId, pId) {
+function openEditModal(cId, pId, subCatId = null) {
   currentEdit.categoryId = cId;
   currentEdit.promptId = pId;
-  const c = categories.find(cc => cc.id === cId),
-        p = c.prompts.find(pp => pp.id === pId);
+  currentEdit.subcategoryId = subCatId;
+  
+  const c = categories.find(cc => cc.id === cId);
+  let p;
+  
+  if (subCatId) {
+    // Find prompt in subcategory
+    const subCat = c.subcategories.find(sc => sc.id === subCatId);
+    p = subCat.prompts.find(pp => pp.id === pId);
+  } else {
+    // Find prompt in main category
+    p = c.prompts.find(pp => pp.id === pId);
+  }
 
   $("#editPromptTitle").val(p.title);
   $("#editPromptPurpose").val(p.purpose || "");
@@ -1418,8 +1442,18 @@ $("#editPromptForm").on("submit", function(e) {
         tg = getTags("editPromptTags");
 
   if (t && pu && d && d !== "") {
-    const c = categories.find(cc => cc.id === currentEdit.categoryId),
-          p = c.prompts.find(pp => pp.id === currentEdit.promptId);
+    const c = categories.find(cc => cc.id === currentEdit.categoryId);
+    let p;
+    
+    if (currentEdit.subcategoryId) {
+      // Edit prompt in subcategory
+      const subCat = c.subcategories.find(sc => sc.id === currentEdit.subcategoryId);
+      p = subCat.prompts.find(pp => pp.id === currentEdit.promptId);
+    } else {
+      // Edit prompt in main category
+      p = c.prompts.find(pp => pp.id === currentEdit.promptId);
+    }
+    
     pushToHistory();
     p.title = sanitizeHTML(t);
     p.purpose = sanitizeHTML(pu);
@@ -1596,7 +1630,13 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   
   // Add subcategory prompts
   subCat.prompts.forEach(p => {
-    ptc.appendChild(createPromptTitleDiv(p, parentCategoryId));
+    const promptDiv = createPromptTitleDiv(p, parentCategoryId);
+    // Override click to display subcategory prompt correctly
+    promptDiv.onclick = () => {
+      clearSearchResults();
+      displaySubcategoryPrompt(promptDiv, p, parentCategoryId, subCat.id, categoryBox);
+    };
+    ptc.appendChild(promptDiv);
   });
   
   // Add button to create new prompt in subcategory
@@ -1605,6 +1645,25 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   newPromptBtn.innerHTML = '<i class="fas fa-plus"></i> Nuovo Prompt';
   newPromptBtn.onclick = () => showNewPromptForm(parentCategoryId, subCat.id);
   ptc.appendChild(newPromptBtn);
+}
+
+function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, categoryBox) {
+  const spc = categoryBox.querySelector(".selected-prompt-container");
+  spc.innerHTML = "";
+  const pd = createPromptContent(prompt, categoryId);
+  spc.appendChild(pd);
+  categoryBox.selectedPrompt = prompt;
+  categoryBox.selectedSubcategoryId = subcategoryId;
+
+  div.parentElement.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+  div.classList.add("active");
+  categoryBox.actionsDiv.style.display = "block";
+
+  const favBtn = categoryBox.actionsDiv.querySelector(".btn-favorite");
+  favBtn.innerHTML = prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+  favBtn.title = prompt.favorite
+    ? translations[currentLanguage]["removeFromFavorites"]
+    : translations[currentLanguage]["addToFavorites"];
 }
 
 function displayFavoritePrompt(p, cId, cont, btn) {
