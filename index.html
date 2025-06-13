@@ -581,13 +581,30 @@ function applyTheme() {
 
 document.getElementById("themeToggleBtn").addEventListener("click", function() {
   currentTheme = currentTheme === "dark" ? "light" : "dark";
+  
+  // Try to save theme to localStorage first, then sessionStorage
   if (isLocalStorageAvailable()) {
-    localStorage.setItem("theme", currentTheme);
+    try {
+      localStorage.setItem("theme", currentTheme);
+    } catch(e) {
+      console.warn("Errore salvataggio tema localStorage:", e.message);
+    }
   }
+  
+  if (isSessionStorageAvailable()) {
+    try {
+      sessionStorage.setItem("theme", currentTheme);
+    } catch(e) {
+      console.warn("Errore salvataggio tema sessionStorage:", e.message);
+    }
+  }
+  
   applyTheme();
 });
 
 let savedTheme = null;
+
+// Try to load theme from localStorage first, then sessionStorage
 if (isLocalStorageAvailable()) {
   try {
     savedTheme = localStorage.getItem("theme");
@@ -595,6 +612,15 @@ if (isLocalStorageAvailable()) {
     console.warn("Errore nel caricamento tema da localStorage:", e);
   }
 }
+
+if (!savedTheme && isSessionStorageAvailable()) {
+  try {
+    savedTheme = sessionStorage.getItem("theme");
+  } catch(e) {
+    console.warn("Errore nel caricamento tema da sessionStorage:", e);
+  }
+}
+
 if (savedTheme) {
   currentTheme = savedTheme;
 }
@@ -682,53 +708,97 @@ function isLocalStorageAvailable() {
   }
 }
 
+function isSessionStorageAvailable() {
+  try {
+    const test = 'test';
+    sessionStorage.setItem(test, test);
+    sessionStorage.removeItem(test);
+    return true;
+  } catch(e) {
+    console.warn('sessionStorage non disponibile:', e.message);
+    return false;
+  }
+}
+
 // Fallback storage for when localStorage is not available
 let fallbackStorage = {};
 
 function loadFromLocalStorage() {
-  if (!isLocalStorageAvailable()) {
-    console.warn("localStorage non disponibile. Possibile blocco da parte del browser.");
-    
-    // Detect Safari specifically
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isPrivateMode = !window.indexedDB; // Common check for private mode
-    
-    let warningMessage = "Attenzione: Il browser sta bloccando il localStorage. I dati non verranno salvati.\n\n";
-    
-    if (isSafari) {
-      warningMessage += "Per Safari:\n";
-      warningMessage += "1. Vai in Impostazioni Safari → Privacy e sicurezza\n";
-      warningMessage += "2. Disabilita 'Impedisci monitoraggio cross-site'\n";
-      warningMessage += "3. Oppure disabilita 'Blocca tutti i cookie'\n";
-      warningMessage += "4. Ricarica la pagina\n\n";
+  // Try multiple storage methods in order of preference
+  let storageData = null;
+  let storageMethod = null;
+  
+  // Method 1: Try localStorage
+  if (isLocalStorageAvailable()) {
+    try {
+      storageData = localStorage.getItem("categories");
+      if (storageData) {
+        storageMethod = "localStorage";
+        console.log("Dati caricati da localStorage");
+      }
+    } catch(e) {
+      console.warn("Errore localStorage:", e.message);
     }
-    
-    if (isPrivateMode) {
-      warningMessage += "Stai usando la modalità privata/incognito. I dati non possono essere salvati in questa modalità.\n\n";
-    }
-    
-    warningMessage += "Per Brave:\n";
-    warningMessage += "1. Disabilita 'Blocca script di tracciamento' per questo sito\n";
-    warningMessage += "2. Oppure aggiungi questo sito agli 'Allowed sites'\n\n";
-    warningMessage += "I dati saranno mantenuti solo per questa sessione.";
-    
-    alert(warningMessage);
-    
-    // Try to load from fallback storage
-    if (fallbackStorage.categories) {
-      const p = JSON.parse(fallbackStorage.categories);
-      console.log("Caricamento da fallback storage:", p.length, "categorie");
-      loadCategoriesData(p);
-    }
-    return;
   }
-
-  const s = localStorage.getItem("categories");
-  console.log("Caricamento da localStorage:", s ? "Dati trovati" : "Nessun dato trovato");
-  if (s) {
-    const p = JSON.parse(s);
-    console.log("Categorie caricate:", p.length);
-    loadCategoriesData(p);
+  
+  // Method 2: Try sessionStorage if localStorage failed
+  if (!storageData && isSessionStorageAvailable()) {
+    try {
+      storageData = sessionStorage.getItem("categories");
+      if (storageData) {
+        storageMethod = "sessionStorage";
+        console.log("Dati caricati da sessionStorage");
+      }
+    } catch(e) {
+      console.warn("Errore sessionStorage:", e.message);
+    }
+  }
+  
+  // Method 3: Try fallback storage
+  if (!storageData && fallbackStorage.categories) {
+    storageData = fallbackStorage.categories;
+    storageMethod = "fallbackStorage";
+    console.log("Dati caricati da fallback storage");
+  }
+  
+  // Show warning only if no storage method worked
+  if (!storageData && !isLocalStorageAvailable() && !isSessionStorageAvailable()) {
+    const isBrave = navigator.userAgent.includes('Brave') || 
+                   (navigator.brave && navigator.brave.isBrave);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    let warningMessage = "⚠️ Impossibile salvare i dati permanentemente.\n\n";
+    
+    if (isBrave) {
+      warningMessage += "🛡️ BRAVE BROWSER RILEVATO:\n";
+      warningMessage += "1. Clicca l'icona dello scudo nella barra degli indirizzi\n";
+      warningMessage += "2. Clicca 'Avanzate'\n";
+      warningMessage += "3. Disabilita 'Blocca script di tracciamento'\n";
+      warningMessage += "4. Ricarica la pagina\n\n";
+      warningMessage += "OPPURE:\n";
+      warningMessage += "• Vai in Impostazioni Brave → Scudi\n";
+      warningMessage += "• Aggiungi questo sito alle eccezioni\n\n";
+    } else if (isSafari) {
+      warningMessage += "🍎 SAFARI RILEVATO:\n";
+      warningMessage += "1. Safari → Preferenze → Privacy\n";
+      warningMessage += "2. Disabilita 'Impedisci monitoraggio cross-site'\n";
+      warningMessage += "3. Ricarica la pagina\n\n";
+    }
+    
+    warningMessage += "💡 I dati saranno salvati solo per questa sessione.";
+    alert(warningMessage);
+  }
+  
+  console.log("Caricamento da " + (storageMethod || "nessuna fonte") + ":", storageData ? "Dati trovati" : "Nessun dato trovato");
+  
+  if (storageData) {
+    try {
+      const parsedData = JSON.parse(storageData);
+      console.log("Categorie caricate:", parsedData.length);
+      loadCategoriesData(parsedData);
+    } catch(e) {
+      console.error("Errore nel parsing dei dati:", e);
+    }
   }
 }
 
@@ -810,26 +880,38 @@ function loadCategoriesData(data) {
 
 function saveToLocalStorage() {
   const dataToSave = JSON.stringify(categories);
+  let saved = false;
   
-  if (!isLocalStorageAvailable()) {
-    console.warn("localStorage non disponibile. Salvataggio in fallback storage.");
-    fallbackStorage.categories = dataToSave;
-    return;
+  // Try localStorage first
+  if (isLocalStorageAvailable()) {
+    try {
+      localStorage.setItem("categories", dataToSave);
+      console.log("✅ Dati salvati nel localStorage. Numero categorie:", categories.length);
+      saved = true;
+    } catch (error) {
+      console.error("❌ Errore nel salvataggio localStorage:", error.message);
+      if (error.name === 'QuotaExceededError') {
+        alert("Spazio localStorage esaurito. Prova a fare un backup ed eliminare alcune categorie.");
+      }
+    }
   }
   
-  try {
-    localStorage.setItem("categories", dataToSave);
-    console.log("Dati salvati nel localStorage. Numero categorie:", categories.length);
-  } catch (error) {
-    console.error("Errore nel salvataggio localStorage:", error);
-    console.warn("Usando fallback storage.");
-    fallbackStorage.categories = dataToSave;
-    
-    if (error.name === 'QuotaExceededError') {
-      alert("Spazio localStorage esaurito. I dati sono salvati temporaneamente. Prova a fare un backup ed eliminare alcune categorie.");
-    } else {
-      console.warn("Dati salvati in memoria temporanea a causa di errore localStorage.");
+  // Try sessionStorage if localStorage failed
+  if (!saved && isSessionStorageAvailable()) {
+    try {
+      sessionStorage.setItem("categories", dataToSave);
+      console.log("⚠️ Dati salvati nel sessionStorage (temporaneo). Numero categorie:", categories.length);
+      saved = true;
+    } catch (error) {
+      console.error("❌ Errore nel salvataggio sessionStorage:", error.message);
     }
+  }
+  
+  // Always save to fallback storage as last resort
+  fallbackStorage.categories = dataToSave;
+  
+  if (!saved) {
+    console.warn("🔄 Dati salvati solo in memoria temporanea (fallback storage).");
   }
 }
 
