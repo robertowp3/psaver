@@ -1026,9 +1026,32 @@ function copyPromptText(p) {
   const d = document.createElement("div");
   d.innerHTML = p.description;
   const txt = d.textContent || d.innerText || "";
-  navigator.clipboard.writeText(txt)
-    .then(() => alert(translations[currentLanguage]["copySuccess"]))
-    .catch(e => console.error(e));
+  const htmlContent = p.description;
+  
+  // Try to copy both HTML and plain text formats
+  if (navigator.clipboard && navigator.clipboard.write) {
+    const data = [];
+    
+    // Add HTML format
+    data.push(new ClipboardItem({
+      'text/html': new Blob([htmlContent], { type: 'text/html' }),
+      'text/plain': new Blob([txt], { type: 'text/plain' })
+    }));
+    
+    navigator.clipboard.write(data)
+      .then(() => alert(translations[currentLanguage]["copySuccess"]))
+      .catch(e => {
+        // Fallback to plain text if HTML copy fails
+        navigator.clipboard.writeText(txt)
+          .then(() => alert(translations[currentLanguage]["copySuccess"]))
+          .catch(e => console.error(e));
+      });
+  } else {
+    // Fallback for browsers that don't support clipboard.write
+    navigator.clipboard.writeText(txt)
+      .then(() => alert(translations[currentLanguage]["copySuccess"]))
+      .catch(e => console.error(e));
+  }
 }
 
 function increaseFontSize(t) {
