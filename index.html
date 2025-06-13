@@ -267,6 +267,13 @@ a:hover {
   border-color: #28a745;
 }
 
+.subcategories-container .btn-outline-secondary.active,
+.subcategories-container .btn.active {
+  color: white !important;
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+}
+
 @media (max-width: 576px) {
   .btn-custom {
     font-size: 14px;
@@ -878,7 +885,13 @@ function createCategoryBox(c) {
       const subBtn = document.createElement("button");
       subBtn.className = "btn btn-outline-secondary btn-sm mr-2 mb-2";
       subBtn.textContent = subCat.name;
-      subBtn.onclick = () => displaySubcategoryPrompts(subCat, c.id, cb);
+      subBtn.onclick = () => {
+        // Remove active class from all subcategory buttons
+        subCatButtons.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
+        // Add active class to clicked button
+        subBtn.classList.add('active');
+        displaySubcategoryPrompts(subCat, c.id, cb);
+      };
       subCatButtons.appendChild(subBtn);
     });
     
