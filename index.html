@@ -581,11 +581,20 @@ function applyTheme() {
 
 document.getElementById("themeToggleBtn").addEventListener("click", function() {
   currentTheme = currentTheme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", currentTheme);
+  if (isLocalStorageAvailable()) {
+    localStorage.setItem("theme", currentTheme);
+  }
   applyTheme();
 });
 
-let savedTheme = localStorage.getItem("theme");
+let savedTheme = null;
+if (isLocalStorageAvailable()) {
+  try {
+    savedTheme = localStorage.getItem("theme");
+  } catch(e) {
+    console.warn("Errore nel caricamento tema da localStorage:", e);
+  }
+}
 if (savedTheme) {
   currentTheme = savedTheme;
 }
@@ -661,96 +670,166 @@ function generateUniqueId() {
   return "_" + Math.random().toString(36).substr(2, 9);
 }
 
+function isLocalStorageAvailable() {
+  try {
+    const test = 'test';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch(e) {
+    console.warn('localStorage non disponibile:', e.message);
+    return false;
+  }
+}
+
+// Fallback storage for when localStorage is not available
+let fallbackStorage = {};
+
 function loadFromLocalStorage() {
+  if (!isLocalStorageAvailable()) {
+    console.warn("localStorage non disponibile. Possibile blocco da parte del browser.");
+    
+    // Detect Safari specifically
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isPrivateMode = !window.indexedDB; // Common check for private mode
+    
+    let warningMessage = "Attenzione: Il browser sta bloccando il localStorage. I dati non verranno salvati.\n\n";
+    
+    if (isSafari) {
+      warningMessage += "Per Safari:\n";
+      warningMessage += "1. Vai in Impostazioni Safari → Privacy e sicurezza\n";
+      warningMessage += "2. Disabilita 'Impedisci monitoraggio cross-site'\n";
+      warningMessage += "3. Oppure disabilita 'Blocca tutti i cookie'\n";
+      warningMessage += "4. Ricarica la pagina\n\n";
+    }
+    
+    if (isPrivateMode) {
+      warningMessage += "Stai usando la modalità privata/incognito. I dati non possono essere salvati in questa modalità.\n\n";
+    }
+    
+    warningMessage += "Per Brave:\n";
+    warningMessage += "1. Disabilita 'Blocca script di tracciamento' per questo sito\n";
+    warningMessage += "2. Oppure aggiungi questo sito agli 'Allowed sites'\n\n";
+    warningMessage += "I dati saranno mantenuti solo per questa sessione.";
+    
+    alert(warningMessage);
+    
+    // Try to load from fallback storage
+    if (fallbackStorage.categories) {
+      const p = JSON.parse(fallbackStorage.categories);
+      console.log("Caricamento da fallback storage:", p.length, "categorie");
+      loadCategoriesData(p);
+    }
+    return;
+  }
+
   const s = localStorage.getItem("categories");
   console.log("Caricamento da localStorage:", s ? "Dati trovati" : "Nessun dato trovato");
   if (s) {
     const p = JSON.parse(s);
     console.log("Categorie caricate:", p.length);
-    
-    p.forEach(c => {
-      c.id = c.id || generateUniqueId();
-      c.name = sanitizeHTML(c.name);
-      c.prompts.forEach(pr => {
-        pr.id = pr.id || generateUniqueId();
-        pr.title = sanitizeHTML(pr.title);
-        pr.purpose = sanitizeHTML(pr.purpose || "");
-        pr.description = pr.description || pr.text || "";
-        pr.tags = pr.tags || [];
-        pr.favorite = pr.favorite || false;
-      });
-      
-      // Clean up invalid subcategories - extremely aggressive filtering
-      if (c.subcategories) {
-        c.subcategories = c.subcategories.filter(subCat => {
-          if (!subCat.name || subCat.name.trim() === "") return false;
-          
-          const cleanName = subCat.name.trim();
-          
-          // Remove ALL invalid patterns
-          if (cleanName.length < 3) return false; // minimum 3 characters
-          if (cleanName.match(/^[a-z]{1,2}$/i)) return false; // single or double letters
-          if (cleanName.match(/^[a-z\s]*v$/i)) return false; // ends with v
-          if (cleanName.match(/^y+$/i)) return false; // only y's
-          if (cleanName.match(/^[a-z]+\s*v\s*$/i)) return false; // letters + v
-          if (cleanName.match(/^mb[a-z]*\s*v?$/i)) return false; // starts with mb
-          if (cleanName.match(/^cd[a-z]*$/i)) return false; // starts with cd
-          if (cleanName.match(/^[a-z]{1,6}\s*v?\s*$/i)) return false; // short random letters
-          if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]{1,4}$/i)) return false; // only consonants (short)
-          if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]+$/i)) return false; // only consonants
-          if (cleanName.match(/^[aeiou]{1,3}$/i)) return false; // only vowels (short)
-          if (cleanName.match(/^c+d*a*$/i)) return false; // patterns with c, d, a
-          if (cleanName.match(/^[cda]+$/i)) return false; // only c, d, a combinations
-          if (cleanName.match(/^[xyz]+$/i)) return false; // only x, y, z
-          if (cleanName.match(/^\w{1,3}$/)) return false; // any 1-3 character combinations
-          
-          // Must contain at least one vowel for meaningful words
-          if (!cleanName.match(/[aeiou]/i)) return false;
-          
-          // Must not be random keyboard mashing
-          if (cleanName.match(/^[qwerty]+$/i)) return false;
-          if (cleanName.match(/^[asdf]+$/i)) return false;
-          if (cleanName.match(/^[zxcv]+$/i)) return false;
-          
-          // Additional validation: must look like a real word
-          const invalidPatterns = [
-            /^[a-z]\1{2,}$/i, // repeated characters like "aaa"
-            /^[a-z]{1,2}[a-z]\2+$/i, // patterns like "aaa", "bbb"
-            /^(.)(.)\1\2+$/i, // alternating patterns
-          ];
-          
-          for (let pattern of invalidPatterns) {
-            if (cleanName.match(pattern)) return false;
-          }
-          
-          return true;
-        }).map(subCat => ({
-          ...subCat,
-          name: sanitizeHTML(subCat.name.trim()),
-          prompts: subCat.prompts || []
-        }));
-        
-        // If all subcategories were filtered out, remove the subcategories property
-        if (c.subcategories.length === 0) {
-          delete c.subcategories;
-        }
-      }
-    });
-    
-    categories.push(...p);
-    sortCategoriesAndPrompts();
-    saveToLocalStorage();
-    renderCategories();
+    loadCategoriesData(p);
   }
 }
 
+function loadCategoriesData(data) {
+  data.forEach(c => {
+    c.id = c.id || generateUniqueId();
+    c.name = sanitizeHTML(c.name);
+    c.prompts.forEach(pr => {
+      pr.id = pr.id || generateUniqueId();
+      pr.title = sanitizeHTML(pr.title);
+      pr.purpose = sanitizeHTML(pr.purpose || "");
+      pr.description = pr.description || pr.text || "";
+      pr.tags = pr.tags || [];
+      pr.favorite = pr.favorite || false;
+    });
+    
+    // Clean up invalid subcategories - extremely aggressive filtering
+    if (c.subcategories) {
+      c.subcategories = c.subcategories.filter(subCat => {
+        if (!subCat.name || subCat.name.trim() === "") return false;
+        
+        const cleanName = subCat.name.trim();
+        
+        // Remove ALL invalid patterns
+        if (cleanName.length < 3) return false; // minimum 3 characters
+        if (cleanName.match(/^[a-z]{1,2}$/i)) return false; // single or double letters
+        if (cleanName.match(/^[a-z\s]*v$/i)) return false; // ends with v
+        if (cleanName.match(/^y+$/i)) return false; // only y's
+        if (cleanName.match(/^[a-z]+\s*v\s*$/i)) return false; // letters + v
+        if (cleanName.match(/^mb[a-z]*\s*v?$/i)) return false; // starts with mb
+        if (cleanName.match(/^cd[a-z]*$/i)) return false; // starts with cd
+        if (cleanName.match(/^[a-z]{1,6}\s*v?\s*$/i)) return false; // short random letters
+        if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]{1,4}$/i)) return false; // only consonants (short)
+        if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]+$/i)) return false; // only consonants
+        if (cleanName.match(/^[aeiou]{1,3}$/i)) return false; // only vowels (short)
+        if (cleanName.match(/^c+d*a*$/i)) return false; // patterns with c, d, a
+        if (cleanName.match(/^[cda]+$/i)) return false; // only c, d, a combinations
+        if (cleanName.match(/^[xyz]+$/i)) return false; // only x, y, z
+        if (cleanName.match(/^\w{1,3}$/)) return false; // any 1-3 character combinations
+        
+        // Must contain at least one vowel for meaningful words
+        if (!cleanName.match(/[aeiou]/i)) return false;
+        
+        // Must not be random keyboard mashing
+        if (cleanName.match(/^[qwerty]+$/i)) return false;
+        if (cleanName.match(/^[asdf]+$/i)) return false;
+        if (cleanName.match(/^[zxcv]+$/i)) return false;
+        
+        // Additional validation: must look like a real word
+        const invalidPatterns = [
+          /^[a-z]\1{2,}$/i, // repeated characters like "aaa"
+          /^[a-z]{1,2}[a-z]\2+$/i, // patterns like "aaa", "bbb"
+          /^(.)(.)\1\2+$/i, // alternating patterns
+        ];
+        
+        for (let pattern of invalidPatterns) {
+          if (cleanName.match(pattern)) return false;
+        }
+        
+        return true;
+      }).map(subCat => ({
+        ...subCat,
+        name: sanitizeHTML(subCat.name.trim()),
+        prompts: subCat.prompts || []
+      }));
+      
+      // If all subcategories were filtered out, remove the subcategories property
+      if (c.subcategories.length === 0) {
+        delete c.subcategories;
+      }
+    }
+  });
+  
+  categories.push(...data);
+  sortCategoriesAndPrompts();
+  saveToLocalStorage();
+  renderCategories();
+}
+
 function saveToLocalStorage() {
+  const dataToSave = JSON.stringify(categories);
+  
+  if (!isLocalStorageAvailable()) {
+    console.warn("localStorage non disponibile. Salvataggio in fallback storage.");
+    fallbackStorage.categories = dataToSave;
+    return;
+  }
+  
   try {
-    const dataToSave = JSON.stringify(categories);
     localStorage.setItem("categories", dataToSave);
     console.log("Dati salvati nel localStorage. Numero categorie:", categories.length);
   } catch (error) {
     console.error("Errore nel salvataggio localStorage:", error);
+    console.warn("Usando fallback storage.");
+    fallbackStorage.categories = dataToSave;
+    
+    if (error.name === 'QuotaExceededError') {
+      alert("Spazio localStorage esaurito. I dati sono salvati temporaneamente. Prova a fare un backup ed eliminare alcune categorie.");
+    } else {
+      console.warn("Dati salvati in memoria temporanea a causa di errore localStorage.");
+    }
   }
 }
 
