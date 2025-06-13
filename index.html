@@ -255,6 +255,18 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.subcategories-container .btn-outline-secondary {
+  color: white;
+  border-color: white;
+  background-color: transparent;
+}
+
+.subcategories-container .btn-outline-secondary:hover {
+  color: white;
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
 @media (max-width: 576px) {
   .btn-custom {
     font-size: 14px;
@@ -1540,7 +1552,10 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   // Add subcategory title
   const subTitle = document.createElement("h5");
   subTitle.textContent = subCat.name;
-  subTitle.className = "mb-3";
+  subTitle.className = "mb-3 mr-4";
+  subTitle.style.display = "inline-block";
+  subTitle.style.marginRight = "20px";
+  subTitle.style.color = "white";
   ptc.appendChild(subTitle);
   
   // Add subcategory prompts
