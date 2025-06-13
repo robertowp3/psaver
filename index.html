@@ -1051,17 +1051,32 @@ function createCategoryBox(c) {
     subCatButtons.className = "d-flex flex-wrap";
     
     c.subcategories.forEach(subCat => {
+      const subCatDiv = document.createElement("div");
+      subCatDiv.className = "d-inline-flex align-items-center mr-2 mb-2";
+      
       const subBtn = document.createElement("button");
-      subBtn.className = "btn btn-outline-secondary btn-sm mr-2 mb-2";
+      subBtn.className = "btn btn-outline-secondary btn-sm";
       subBtn.textContent = subCat.name;
       subBtn.onclick = () => {
         // Remove active class from all subcategory buttons
-        subCatButtons.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
+        subCatButtons.querySelectorAll('.btn-outline-secondary').forEach(btn => btn.classList.remove('active'));
         // Add active class to clicked button
         subBtn.classList.add('active');
         displaySubcategoryPrompts(subCat, c.id, cb);
       };
-      subCatButtons.appendChild(subBtn);
+      
+      const deleteSubBtn = document.createElement("button");
+      deleteSubBtn.className = "btn btn-danger btn-sm ml-1";
+      deleteSubBtn.innerHTML = '<i class="fas fa-times"></i>';
+      deleteSubBtn.title = "Elimina sottocategoria";
+      deleteSubBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSubcategory(c.id, subCat.id);
+      };
+      
+      subCatDiv.appendChild(subBtn);
+      subCatDiv.appendChild(deleteSubBtn);
+      subCatButtons.appendChild(subCatDiv);
     });
     
     subCatContainer.appendChild(subCatButtons);
@@ -1093,7 +1108,8 @@ function createCategoryBox(c) {
   adBtn.onclick = (e) => {
     e.stopPropagation();
     if (cb.selectedPrompt && confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
-      deletePrompt(c.id, cb.selectedPrompt.id);
+      const subCatId = cb.selectedSubcategoryId || null;
+      deletePrompt(c.id, cb.selectedPrompt.id, subCatId);
     }
   };
   afBtn.onclick = (e) => {
@@ -1337,15 +1353,50 @@ function deleteCategory(cId) {
   }
 }
 
-function deletePrompt(cId, pId) {
+function deletePrompt(cId, pId, subCatId = null) {
   const c = categories.find(cc => cc.id === cId);
   if (c) {
-    const i = c.prompts.findIndex(pp => pp.id === pId);
-    if (i !== -1) {
-      pushToHistory();
-      c.prompts.splice(i, 1);
-      saveToLocalStorage();
-      renderCategories();
+    if (subCatId) {
+      // Delete prompt from subcategory
+      const subCat = c.subcategories.find(sc => sc.id === subCatId);
+      if (subCat) {
+        const i = subCat.prompts.findIndex(pp => pp.id === pId);
+        if (i !== -1) {
+          pushToHistory();
+          subCat.prompts.splice(i, 1);
+          saveToLocalStorage();
+          renderCategories();
+          toggleCategoryBox(cId);
+        }
+      }
+    } else {
+      // Delete prompt from main category
+      const i = c.prompts.findIndex(pp => pp.id === pId);
+      if (i !== -1) {
+        pushToHistory();
+        c.prompts.splice(i, 1);
+        saveToLocalStorage();
+        renderCategories();
+      }
+    }
+  }
+}
+
+function deleteSubcategory(cId, subCatId) {
+  if (confirm("Sei sicuro di voler eliminare questa sottocategoria e tutti i suoi prompt?")) {
+    const c = categories.find(cc => cc.id === cId);
+    if (c && c.subcategories) {
+      const i = c.subcategories.findIndex(sc => sc.id === subCatId);
+      if (i !== -1) {
+        pushToHistory();
+        c.subcategories.splice(i, 1);
+        if (c.subcategories.length === 0) {
+          delete c.subcategories;
+        }
+        saveToLocalStorage();
+        renderCategories();
+        toggleCategoryBox(cId);
+      }
     }
   }
 }
