@@ -795,10 +795,20 @@ function loadFromLocalStorage() {
     try {
       const parsedData = JSON.parse(storageData);
       console.log("Categorie caricate:", parsedData.length);
+      
+      // Debug: log subcategories being loaded
+      parsedData.forEach(c => {
+        if (c.subcategories && c.subcategories.length > 0) {
+          console.log(`Caricando categoria "${c.name}" con ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
+        }
+      });
+      
       loadCategoriesData(parsedData);
     } catch(e) {
       console.error("Errore nel parsing dei dati:", e);
     }
+  } else {
+    console.log("🔄 Nessun dato trovato nei sistemi di storage. Inizializzando con array vuoto.");
   }
 }
 
@@ -815,57 +825,20 @@ function loadCategoriesData(data) {
       pr.favorite = pr.favorite || false;
     });
     
-    // Clean up invalid subcategories - extremely aggressive filtering
+    // Preserve subcategories - only sanitize names, don't filter unless completely empty
     if (c.subcategories) {
       c.subcategories = c.subcategories.filter(subCat => {
+        // Only remove if completely empty or null
         if (!subCat.name || subCat.name.trim() === "") return false;
-        
-        const cleanName = subCat.name.trim();
-        
-        // Remove ALL invalid patterns
-        if (cleanName.length < 3) return false; // minimum 3 characters
-        if (cleanName.match(/^[a-z]{1,2}$/i)) return false; // single or double letters
-        if (cleanName.match(/^[a-z\s]*v$/i)) return false; // ends with v
-        if (cleanName.match(/^y+$/i)) return false; // only y's
-        if (cleanName.match(/^[a-z]+\s*v\s*$/i)) return false; // letters + v
-        if (cleanName.match(/^mb[a-z]*\s*v?$/i)) return false; // starts with mb
-        if (cleanName.match(/^cd[a-z]*$/i)) return false; // starts with cd
-        if (cleanName.match(/^[a-z]{1,6}\s*v?\s*$/i)) return false; // short random letters
-        if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]{1,4}$/i)) return false; // only consonants (short)
-        if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]+$/i)) return false; // only consonants
-        if (cleanName.match(/^[aeiou]{1,3}$/i)) return false; // only vowels (short)
-        if (cleanName.match(/^c+d*a*$/i)) return false; // patterns with c, d, a
-        if (cleanName.match(/^[cda]+$/i)) return false; // only c, d, a combinations
-        if (cleanName.match(/^[xyz]+$/i)) return false; // only x, y, z
-        if (cleanName.match(/^\w{1,3}$/)) return false; // any 1-3 character combinations
-        
-        // Must contain at least one vowel for meaningful words
-        if (!cleanName.match(/[aeiou]/i)) return false;
-        
-        // Must not be random keyboard mashing
-        if (cleanName.match(/^[qwerty]+$/i)) return false;
-        if (cleanName.match(/^[asdf]+$/i)) return false;
-        if (cleanName.match(/^[zxcv]+$/i)) return false;
-        
-        // Additional validation: must look like a real word
-        const invalidPatterns = [
-          /^[a-z]\1{2,}$/i, // repeated characters like "aaa"
-          /^[a-z]{1,2}[a-z]\2+$/i, // patterns like "aaa", "bbb"
-          /^(.)(.)\1\2+$/i, // alternating patterns
-        ];
-        
-        for (let pattern of invalidPatterns) {
-          if (cleanName.match(pattern)) return false;
-        }
-        
         return true;
       }).map(subCat => ({
         ...subCat,
+        id: subCat.id || generateUniqueId(),
         name: sanitizeHTML(subCat.name.trim()),
         prompts: subCat.prompts || []
       }));
       
-      // If all subcategories were filtered out, remove the subcategories property
+      // Only delete subcategories array if it's completely empty
       if (c.subcategories.length === 0) {
         delete c.subcategories;
       }
@@ -882,11 +855,27 @@ function saveToLocalStorage() {
   const dataToSave = JSON.stringify(categories);
   let saved = false;
   
+  console.log("💾 Tentativo di salvataggio. Categorie:", categories.length);
+  
+  // Debug: log subcategories being saved
+  categories.forEach(c => {
+    if (c.subcategories && c.subcategories.length > 0) {
+      console.log(`Categoria "${c.name}" ha ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
+    }
+  });
+  
   // Try localStorage first
   if (isLocalStorageAvailable()) {
     try {
       localStorage.setItem("categories", dataToSave);
       console.log("✅ Dati salvati nel localStorage. Numero categorie:", categories.length);
+      
+      // Verify save was successful
+      const savedData = localStorage.getItem("categories");
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        console.log("✅ Verifica salvataggio riuscita. Categorie salvate:", parsed.length);
+      }
       saved = true;
     } catch (error) {
       console.error("❌ Errore nel salvataggio localStorage:", error.message);
@@ -1474,17 +1463,10 @@ document.getElementById("addCategoryBtn2").onclick = function() {
   const cn = document.getElementById("newCategoryInput2").value.trim();
   const selectedCategoryBox = document.querySelector('.category-box[style*="block"]');
   
-  if (cn && cn.length >= 2) {
-    // More permissive validation - only block clearly invalid patterns
-    if (cn.length < 2 || 
-        cn.match(/^[a-z]{1}$/i) || // single letter only
-        cn.match(/^y+$/i) || // only y's
-        cn.match(/^[xyz]+$/i) || // only x, y, z
-        cn.match(/^[cda]{1,3}$/i) || // only c, d, a (short)
-        cn.match(/^mb[a-z]*v$/i) || // specific invalid pattern
-        cn.match(/^[qwerty]{1,4}$/i) || // keyboard mashing (short)
-        cn.match(/^[asdf]{1,4}$/i)) { // keyboard mashing (short)
-      alert("Nome sottocategoria non valido. Inserisci un nome più descrittivo (minimo 2 caratteri).");
+  if (cn && cn.length >= 1) {
+    // Very permissive validation - only block completely empty names
+    if (cn.length < 1) {
+      alert("Nome sottocategoria non può essere vuoto.");
       return;
     }
     
@@ -1956,9 +1938,10 @@ document.getElementById("undoBtn").onclick = undoAction;
 document.getElementById("redoBtn").onclick = redoAction;
 
 document.getElementById("cleanupBtn").onclick = function() {
-  if (confirm("Vuoi rimuovere tutte le sottocategorie con nomi non validi?")) {
+  if (confirm("Vuoi rimuovere sottocategorie con nomi chiaramente non validi (es. solo lettere casuali)?")) {
     pushToHistory();
     
+    let totalRemoved = 0;
     categories.forEach(c => {
       if (c.subcategories) {
         const beforeCount = c.subcategories.length;
@@ -1967,36 +1950,15 @@ document.getElementById("cleanupBtn").onclick = function() {
           
           const cleanName = subCat.name.trim();
           
-          // Extremely strict filtering - same as loading filter
-          if (cleanName.length < 3) return false;
-          if (cleanName.match(/^[a-z]{1,2}$/i)) return false;
-          if (cleanName.match(/^[a-z\s]*v$/i)) return false;
-          if (cleanName.match(/^y+$/i)) return false;
-          if (cleanName.match(/^[a-z]+\s*v\s*$/i)) return false;
-          if (cleanName.match(/^mb[a-z]*\s*v?$/i)) return false;
-          if (cleanName.match(/^cd[a-z]*$/i)) return false;
-          if (cleanName.match(/^[a-z]{1,6}\s*v?\s*$/i)) return false;
-          if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]{1,4}$/i)) return false;
-          if (cleanName.match(/^[bcdfghjklmnpqrstvwxyz]+$/i)) return false;
-          if (cleanName.match(/^[aeiou]{1,3}$/i)) return false;
-          if (cleanName.match(/^c+d*a*$/i)) return false;
-          if (cleanName.match(/^[cda]+$/i)) return false;
-          if (cleanName.match(/^[xyz]+$/i)) return false;
-          if (cleanName.match(/^\w{1,3}$/)) return false;
-          if (!cleanName.match(/[aeiou]/i)) return false;
-          if (cleanName.match(/^[qwerty]+$/i)) return false;
-          if (cleanName.match(/^[asdf]+$/i)) return false;
-          if (cleanName.match(/^[zxcv]+$/i)) return false;
+          // More conservative filtering - only remove obvious garbage
+          if (cleanName.length < 1) return false;
+          if (cleanName.match(/^[xyz]+$/i) && cleanName.length <= 3) return false;
+          if (cleanName.match(/^[qwerty]{4,}$/i)) return false;
+          if (cleanName.match(/^[asdf]{4,}$/i)) return false;
+          if (cleanName.match(/^[zxcv]{4,}$/i)) return false;
           
-          const invalidPatterns = [
-            /^[a-z]\1{2,}$/i,
-            /^[a-z]{1,2}[a-z]\2+$/i,
-            /^(.)(.)\1\2+$/i,
-          ];
-          
-          for (let pattern of invalidPatterns) {
-            if (cleanName.match(pattern)) return false;
-          }
+          // Remove only obvious repeated patterns
+          if (cleanName.match(/^(.)\1{4,}$/i)) return false; // 5+ repeated characters
           
           return true;
         });
@@ -2005,15 +1967,17 @@ document.getElementById("cleanupBtn").onclick = function() {
           delete c.subcategories;
         }
         
-        if (beforeCount > c.subcategories.length) {
-          console.log(`Rimossi ${beforeCount - c.subcategories.length} sottocategorie invalide da ${c.name}`);
+        const removed = beforeCount - c.subcategories.length;
+        if (removed > 0) {
+          totalRemoved += removed;
+          console.log(`Rimossi ${removed} sottocategorie invalide da ${c.name}`);
         }
       }
     });
     
     saveToLocalStorage();
     renderCategories();
-    alert("Pulizia completata!");
+    alert(`Pulizia completata! Rimosse ${totalRemoved} sottocategorie chiaramente non valide.`);
   }
 };
 
