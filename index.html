@@ -1898,11 +1898,10 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
 
 function displayFavoritePrompt(p, cId, cont, btn) {
   cont.innerHTML = "";
-  const pd = createPromptContent(p, cId);
-  cont.appendChild(pd);
-
+  
+  // Create action buttons first
   const ad = document.createElement("div");
-  ad.className = "favorite-actions mt-3";
+  ad.className = "favorite-actions mb-3";
 
   const eB = createIconButton("info", "edit", translations[currentLanguage]["edit"]),
         cB = createIconButton("warning", "copy", translations[currentLanguage]["copy"]),
@@ -1911,7 +1910,11 @@ function displayFavoritePrompt(p, cId, cont, btn) {
         rfB = createIconButton("danger", "trash", translations[currentLanguage]["removeFromFavorites"]);
 
   ad.append(eB, cB, sB, rfB, fB);
+  
+  // Add buttons first, then prompt content
   cont.appendChild(ad);
+  const pd = createPromptContent(p, cId);
+  cont.appendChild(pd);
 
   eB.onclick = e => {
     e.stopPropagation();
