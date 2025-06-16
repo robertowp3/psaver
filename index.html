@@ -69,9 +69,17 @@ a:hover {
   margin-top: 20px;
 }
 
-.prompt-title-div.active {
-  background-color: var(--prompt-active-color);
-  color: var(--prompt-active-text-color);
+.prompt-title-div.active,
+.btn.active {
+  background-color: var(--prompt-active-color) !important;
+  color: var(--prompt-active-text-color) !important;
+  border-color: var(--prompt-active-color) !important;
+}
+
+.btn-secondary.active {
+  background-color: #28a745 !important;
+  color: white !important;
+  border-color: #28a745 !important;
 }
 
 .prompt-content {
@@ -272,6 +280,17 @@ a:hover {
   color: white !important;
   background-color: #28a745 !important;
   border-color: #28a745 !important;
+}
+
+.subcategory-prompt.active {
+  background-color: #28a745 !important;
+  color: white !important;
+  border-color: #28a745 !important;
+}
+
+.subcategory-prompt.active:hover {
+  background-color: #218838 !important;
+  color: white !important;
 }
 
 @media (max-width: 576px) {
@@ -494,7 +513,7 @@ const categories = [],
           increaseFont: "Increase Font",
           addToFavorites: "Add to Favorites",
           removeFromFavorites: "Remove from Favorites",
-          purpose: "What is it for",
+          purpose: "Instructions",
           description: "Description",
           removeFromFavoritesConfirmation: "Are you sure you want to remove this prompt from favorites?",
           undo: "Undo",
@@ -536,7 +555,7 @@ const categories = [],
           increaseFont: "Aumenta Font",
           addToFavorites: "Aggiungi ai Preferiti",
           removeFromFavorites: "Rimuovi dai Preferiti",
-          purpose: "A cosa serve",
+          purpose: "Istruzioni",
           description: "Descrizione",
           removeFromFavoritesConfirmation: "Sei sicuro di voler rimuovere questo prompt dai preferiti?",
           undo: "Annulla",
@@ -1154,8 +1173,20 @@ function displaySelectedPrompt(d, p, cId) {
   sp.appendChild(pd);
   cb.selectedPrompt = p;
 
-  d.parentElement.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+  // Remove active class from all prompt buttons in this category
+  d.parentElement.querySelectorAll(".btn").forEach(b => {
+    b.classList.remove("active");
+    b.style.backgroundColor = "";
+    b.style.color = "";
+    b.style.borderColor = "";
+  });
+  
+  // Add active class and force green styling
   d.classList.add("active");
+  d.style.backgroundColor = "#28a745";
+  d.style.color = "white";
+  d.style.borderColor = "#28a745";
+  
   cb.actionsDiv.style.display = "block";
 
   const favBtn = cb.actionsDiv.querySelector(".btn-favorite");
@@ -1825,6 +1856,7 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   // Add subcategory prompts
   subCat.prompts.forEach(p => {
     const promptDiv = createPromptTitleDiv(p, parentCategoryId);
+    promptDiv.classList.add('subcategory-prompt'); // Add class to identify subcategory prompts
     // Override click to display subcategory prompt correctly
     promptDiv.onclick = () => {
       clearSearchResults();
@@ -1849,7 +1881,11 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
   categoryBox.selectedPrompt = prompt;
   categoryBox.selectedSubcategoryId = subcategoryId;
 
+  // Remove active class from all buttons (both regular and subcategory prompts)
   div.parentElement.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+  div.parentElement.querySelectorAll(".subcategory-prompt").forEach(b => b.classList.remove("active"));
+  
+  // Add active class to the selected subcategory prompt
   div.classList.add("active");
   categoryBox.actionsDiv.style.display = "block";
 
