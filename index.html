@@ -1907,9 +1907,8 @@ function displayFavoritePrompt(p, cId, cont, btn) {
   const eB = createIconButton("info", "edit", translations[currentLanguage]["edit"]),
         cB = createIconButton("warning", "copy", translations[currentLanguage]["copy"]),
         sB = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]),
-        dB = createIconButton("danger", "trash", translations[currentLanguage]["delete"]),
         fB = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]),
-        rfB = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
+        rfB = createIconButton("danger", "trash", translations[currentLanguage]["removeFromFavorites"]);
 
   ad.append(eB, cB, sB, rfB, fB);
   cont.appendChild(ad);
@@ -1936,7 +1935,7 @@ function displayFavoritePrompt(p, cId, cont, btn) {
       pushToHistory();
       p.favorite = false;
       saveToLocalStorage();
-      renderFavorites();
+      renderFavorites(); // Refresh favorites view to remove the item from display
     }
   };
 }
