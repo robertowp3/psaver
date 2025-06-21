@@ -1435,6 +1435,7 @@ function searchPrompts() {
   pdc.appendChild(h);
 
   let found = false;
+  const searchResults = [];
   categories.forEach(c => {
     c.prompts.forEach(p => {
       const pt = (p.description || "").toLowerCase(),
@@ -1448,9 +1449,15 @@ function searchPrompts() {
         tg.includes(q)
       ) {
         found = true;
-        pdc.appendChild(createPromptContent(p, c.id));
+        searchResults.push({prompt: p, categoryId: c.id});
       }
     });
+  });
+  
+  // Sort search results alphabetically by prompt title
+  searchResults.sort((a, b) => a.prompt.title.localeCompare(b.prompt.title, currentLanguage));
+  searchResults.forEach(result => {
+    pdc.appendChild(createPromptContent(result.prompt, result.categoryId));
   });
 
   if (!found) {
