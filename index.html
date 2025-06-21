@@ -293,6 +293,35 @@ a:hover {
   color: white !important;
 }
 
+.search-actions {
+  transition: all 0.3s ease;
+}
+
+.search-actions:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.search-actions .btn-custom {
+  margin-right: 10px;
+  margin-bottom: 5px;
+  transition: all 0.2s ease;
+}
+
+.search-actions .btn-custom:hover {
+  transform: scale(1.05);
+}
+
+.prompt-content {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.prompt-content:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
 @media (max-width: 576px) {
   .btn-custom {
     font-size: 14px;
@@ -1437,9 +1466,12 @@ function searchPrompts() {
   let found = false;
   const searchResults = [];
   categories.forEach(c => {
+    // Search in main category name
+    const cn = c.name.toLowerCase();
+    
+    // Search in main category prompts
     c.prompts.forEach(p => {
       const pt = (p.description || "").toLowerCase(),
-            cn = c.name.toLowerCase(),
             tg = p.tags.map(t => t.toLowerCase());
 
       if (
@@ -1452,12 +1484,140 @@ function searchPrompts() {
         searchResults.push({prompt: p, categoryId: c.id});
       }
     });
+    
+    // Search in subcategories and their prompts
+    if (c.subcategories) {
+      c.subcategories.forEach(subCat => {
+        const subCatName = subCat.name.toLowerCase();
+        
+        // Search subcategory name
+        if (subCatName.includes(q)) {
+          found = true;
+          // Add all prompts from this subcategory if subcategory name matches
+          subCat.prompts.forEach(p => {
+            searchResults.push({prompt: p, categoryId: c.id, subcategoryName: subCat.name});
+          });
+        } else {
+          // Search in subcategory prompts
+          subCat.prompts.forEach(p => {
+            const pt = (p.description || "").toLowerCase(),
+                  tg = p.tags.map(t => t.toLowerCase());
+
+            if (
+              p.title.toLowerCase().includes(q) ||
+              pt.includes(q) ||
+              tg.includes(q)
+            ) {
+              found = true;
+              searchResults.push({prompt: p, categoryId: c.id, subcategoryName: subCat.name});
+            }
+          });
+        }
+      });
+    }
   });
   
   // Sort search results alphabetically by prompt title
   searchResults.sort((a, b) => a.prompt.title.localeCompare(b.prompt.title, currentLanguage));
   searchResults.forEach(result => {
-    pdc.appendChild(createPromptContent(result.prompt, result.categoryId));
+    const promptContent = createPromptContent(result.prompt, result.categoryId);
+    
+    // Add subcategory info if prompt is from a subcategory
+    if (result.subcategoryName) {
+      const subCatInfo = document.createElement("div");
+      subCatInfo.className = "text-muted small mb-2";
+      subCatInfo.innerHTML = `<i class="fas fa-folder"></i> Sottocategoria: ${result.subcategoryName}`;
+      promptContent.insertBefore(subCatInfo, promptContent.firstChild);
+    }
+    
+    // Add action buttons for search results with better styling
+    const searchActionsDiv = document.createElement("div");
+    searchActionsDiv.className = "search-actions d-flex flex-wrap align-items-center mb-3 p-2";
+    searchActionsDiv.style.backgroundColor = "var(--tertiary-background-color)";
+    searchActionsDiv.style.borderRadius = "5px";
+    searchActionsDiv.style.border = "1px solid var(--quaternary-background-color)";
+    
+    // Create buttons with proper styling
+    const editBtn = createIconButton("info", "edit", translations[currentLanguage]["edit"]);
+    const copyBtn = createIconButton("warning", "copy", translations[currentLanguage]["copy"]);
+    const shareBtn = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]);
+    const fontBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]);
+    const favBtn = createIconButton("favorite", "star", result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"]);
+    const deleteBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
+    
+    // Update favorite button icon and styling
+    favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+    favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+    
+    // Add click handlers with comprehensive functionality
+    editBtn.onclick = (e) => {
+      e.stopPropagation();
+      // Open edit modal for this prompt
+      openEditModal(result.categoryId, result.prompt.id, result.subcategoryId || null);
+    };
+    
+    copyBtn.onclick = (e) => {
+      e.stopPropagation();
+      copyPromptText(result.prompt);
+    };
+    
+    shareBtn.onclick = (e) => {
+      e.stopPropagation();
+      sharePrompt(result.prompt);
+    };
+    
+    fontBtn.onclick = (e) => {
+      e.stopPropagation();
+      const textDiv = promptContent.querySelector(".display-prompt-text");
+      increaseFontSize(textDiv);
+    };
+    
+    favBtn.onclick = (e) => {
+      e.stopPropagation();
+      pushToHistory();
+      result.prompt.favorite = !result.prompt.favorite;
+      saveToLocalStorage();
+      favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+      favBtn.title = result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"];
+      favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+    };
+    
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
+        pushToHistory();
+        const category = categories.find(c => c.id === result.categoryId);
+        if (category) {
+          if (result.subcategoryId) {
+            // Delete from subcategory
+            const subCat = category.subcategories.find(sc => sc.id === result.subcategoryId);
+            if (subCat) {
+              const index = subCat.prompts.findIndex(p => p.id === result.prompt.id);
+              if (index !== -1) {
+                subCat.prompts.splice(index, 1);
+              }
+            }
+          } else {
+            // Delete from main category
+            const index = category.prompts.findIndex(p => p.id === result.prompt.id);
+            if (index !== -1) {
+              category.prompts.splice(index, 1);
+            }
+          }
+          saveToLocalStorage();
+          // Refresh search results
+          searchPrompts();
+        }
+      }
+    };
+    
+    // Add all buttons to the actions div
+    searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, deleteBtn, fontBtn);
+    
+    // Insert actions at the top of the prompt content
+    promptContent.insertBefore(searchActionsDiv, promptContent.firstChild);
+    
+    pdc.appendChild(promptContent);
   });
 
   if (!found) {
