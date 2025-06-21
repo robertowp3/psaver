@@ -1519,105 +1519,40 @@ function searchPrompts() {
   
   // Sort search results alphabetically by prompt title
   searchResults.sort((a, b) => a.prompt.title.localeCompare(b.prompt.title, currentLanguage));
+  
+  // Create containers for titles and selected prompt
+  const searchTitlesContainer = document.createElement("div");
+  searchTitlesContainer.className = "search-titles-container d-flex flex-wrap mb-3";
+  
+  const selectedSearchContainer = document.createElement("div");
+  selectedSearchContainer.className = "selected-search-container";
+  
+  pdc.appendChild(searchTitlesContainer);
+  pdc.appendChild(selectedSearchContainer);
+  
+  // Add title buttons for each result
   searchResults.forEach(result => {
-    const promptContent = createPromptContent(result.prompt, result.categoryId);
+    const titleButton = document.createElement("button");
+    titleButton.className = "btn btn-secondary mr-2 mb-2";
+    titleButton.textContent = result.prompt.title;
     
-    // Add subcategory info if prompt is from a subcategory
+    // Add subcategory info to title if from subcategory
     if (result.subcategoryName) {
-      const subCatInfo = document.createElement("div");
-      subCatInfo.className = "text-muted small mb-2";
-      subCatInfo.innerHTML = `<i class="fas fa-folder"></i> Sottocategoria: ${result.subcategoryName}`;
-      promptContent.insertBefore(subCatInfo, promptContent.firstChild);
+      titleButton.innerHTML = `${result.prompt.title} <small class="text-muted">(<i class="fas fa-folder"></i> ${result.subcategoryName})</small>`;
     }
     
-    // Add action buttons for search results with better styling
-    const searchActionsDiv = document.createElement("div");
-    searchActionsDiv.className = "search-actions d-flex flex-wrap align-items-center mb-3 p-2";
-    searchActionsDiv.style.backgroundColor = "var(--tertiary-background-color)";
-    searchActionsDiv.style.borderRadius = "5px";
-    searchActionsDiv.style.border = "1px solid var(--quaternary-background-color)";
-    
-    // Create buttons with proper styling
-    const editBtn = createIconButton("info", "edit", translations[currentLanguage]["edit"]);
-    const copyBtn = createIconButton("warning", "copy", translations[currentLanguage]["copy"]);
-    const shareBtn = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]);
-    const fontBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]);
-    const favBtn = createIconButton("favorite", "star", result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"]);
-    const deleteBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
-    
-    // Update favorite button icon and styling
-    favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
-    favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
-    
-    // Add click handlers with comprehensive functionality
-    editBtn.onclick = (e) => {
-      e.stopPropagation();
-      // Open edit modal for this prompt
-      openEditModal(result.categoryId, result.prompt.id, result.subcategoryId || null);
+    titleButton.onclick = () => {
+      // Remove active class from all search title buttons
+      searchTitlesContainer.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      titleButton.classList.add('active');
+      
+      // Display the selected prompt content
+      displaySearchPromptContent(result, selectedSearchContainer);
     };
     
-    copyBtn.onclick = (e) => {
-      e.stopPropagation();
-      copyPromptText(result.prompt);
-    };
-    
-    shareBtn.onclick = (e) => {
-      e.stopPropagation();
-      sharePrompt(result.prompt);
-    };
-    
-    fontBtn.onclick = (e) => {
-      e.stopPropagation();
-      const textDiv = promptContent.querySelector(".display-prompt-text");
-      increaseFontSize(textDiv);
-    };
-    
-    favBtn.onclick = (e) => {
-      e.stopPropagation();
-      pushToHistory();
-      result.prompt.favorite = !result.prompt.favorite;
-      saveToLocalStorage();
-      favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
-      favBtn.title = result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"];
-      favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
-    };
-    
-    deleteBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
-        pushToHistory();
-        const category = categories.find(c => c.id === result.categoryId);
-        if (category) {
-          if (result.subcategoryId) {
-            // Delete from subcategory
-            const subCat = category.subcategories.find(sc => sc.id === result.subcategoryId);
-            if (subCat) {
-              const index = subCat.prompts.findIndex(p => p.id === result.prompt.id);
-              if (index !== -1) {
-                subCat.prompts.splice(index, 1);
-              }
-            }
-          } else {
-            // Delete from main category
-            const index = category.prompts.findIndex(p => p.id === result.prompt.id);
-            if (index !== -1) {
-              category.prompts.splice(index, 1);
-            }
-          }
-          saveToLocalStorage();
-          // Refresh search results
-          searchPrompts();
-        }
-      }
-    };
-    
-    // Add all buttons to the actions div
-    searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, deleteBtn, fontBtn);
-    
-    // Insert actions at the top of the prompt content
-    promptContent.insertBefore(searchActionsDiv, promptContent.firstChild);
-    
-    pdc.appendChild(promptContent);
+    searchTitlesContainer.appendChild(titleButton);
   });
 
   if (!found) {
@@ -2061,6 +1996,98 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
   favBtn.title = prompt.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+}
+
+function displaySearchPromptContent(result, container) {
+  container.innerHTML = "";
+  
+  // Create action buttons first
+  const searchActionsDiv = document.createElement("div");
+  searchActionsDiv.className = "search-actions d-flex flex-wrap align-items-center mb-3 p-2";
+  searchActionsDiv.style.backgroundColor = "var(--tertiary-background-color)";
+  searchActionsDiv.style.borderRadius = "5px";
+  searchActionsDiv.style.border = "1px solid var(--quaternary-background-color)";
+  
+  // Create buttons with proper styling
+  const editBtn = createIconButton("info", "edit", translations[currentLanguage]["edit"]);
+  const copyBtn = createIconButton("warning", "copy", translations[currentLanguage]["copy"]);
+  const shareBtn = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]);
+  const fontBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]);
+  const favBtn = createIconButton("favorite", "star", result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"]);
+  const deleteBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
+  
+  // Update favorite button icon and styling
+  favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+  favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+  
+  // Add click handlers with comprehensive functionality
+  editBtn.onclick = (e) => {
+    e.stopPropagation();
+    openEditModal(result.categoryId, result.prompt.id, result.subcategoryId || null);
+  };
+  
+  copyBtn.onclick = (e) => {
+    e.stopPropagation();
+    copyPromptText(result.prompt);
+  };
+  
+  shareBtn.onclick = (e) => {
+    e.stopPropagation();
+    sharePrompt(result.prompt);
+  };
+  
+  fontBtn.onclick = (e) => {
+    e.stopPropagation();
+    const textDiv = container.querySelector(".display-prompt-text");
+    increaseFontSize(textDiv);
+  };
+  
+  favBtn.onclick = (e) => {
+    e.stopPropagation();
+    pushToHistory();
+    result.prompt.favorite = !result.prompt.favorite;
+    saveToLocalStorage();
+    favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+    favBtn.title = result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"];
+    favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+  };
+  
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
+      pushToHistory();
+      const category = categories.find(c => c.id === result.categoryId);
+      if (category) {
+        if (result.subcategoryId) {
+          // Delete from subcategory
+          const subCat = category.subcategories.find(sc => sc.id === result.subcategoryId);
+          if (subCat) {
+            const index = subCat.prompts.findIndex(p => p.id === result.prompt.id);
+            if (index !== -1) {
+              subCat.prompts.splice(index, 1);
+            }
+          }
+        } else {
+          // Delete from main category
+          const index = category.prompts.findIndex(p => p.id === result.prompt.id);
+          if (index !== -1) {
+            category.prompts.splice(index, 1);
+          }
+        }
+        saveToLocalStorage();
+        // Refresh search results
+        searchPrompts();
+      }
+    }
+  };
+  
+  // Add all buttons to the actions div
+  searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, deleteBtn, fontBtn);
+  
+  // Add buttons first, then prompt content
+  container.appendChild(searchActionsDiv);
+  const promptContent = createPromptContent(result.prompt, result.categoryId);
+  container.appendChild(promptContent);
 }
 
 function displayFavoritePrompt(p, cId, cont, btn) {
