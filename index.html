@@ -413,8 +413,14 @@ a:hover {
         <button id="importBtn" class="btn btn-import mr-2">
           <i class="fas fa-upload"></i> <span data-translate="importBackup">Importa Backup</span>
         </button>
-        <button id="cleanupBtn" class="btn btn-danger">
+        <button id="cleanupBtn" class="btn btn-danger mr-2">
           <i class="fas fa-broom"></i> Pulisci Sottocategorie
+        </button>
+        <button id="deleteAllBtn" class="btn btn-danger mr-2">
+          <i class="fas fa-trash-alt"></i> <span data-translate="deleteAll">Elimina Tutto</span>
+        </button>
+        <button id="moveCategoryBtn" class="btn btn-warning">
+          <i class="fas fa-arrows-alt"></i> <span data-translate="moveCategory">Sposta Categoria</span>
         </button>
       </div>
 
@@ -546,7 +552,21 @@ const categories = [],
           description: "Description",
           removeFromFavoritesConfirmation: "Are you sure you want to remove this prompt from favorites?",
           undo: "Undo",
-          redo: "Redo"
+          redo: "Redo",
+          deleteAll: "Delete All",
+          deleteAllConfirmation: "Are you sure you want to delete ALL data? This action cannot be undone!\n\nThis will permanently remove:\n- All categories\n- All subcategories\n- All prompts\n- All favorites\n\nType 'DELETE ALL' to confirm:",
+          deleteAllSuccess: "All data has been deleted successfully.",
+          deleteAllCancelled: "Delete operation cancelled.",
+          movePrompt: "Move Prompt",
+          selectTargetCategory: "Select target category:",
+          promptMovedSuccessfully: "Prompt moved successfully!",
+          cannotMoveToSameCategory: "Cannot move to the same category.",
+          moveCategory: "Move Category",
+          selectCategoryToMove: "Select category to move:",
+          selectDestinationCategory: "Select destination category:",
+          categoryMovedSuccessfully: "Category moved successfully as subcategory!",
+          cannotMoveToItself: "Cannot move category to itself.",
+          noCategoriesAvailable: "No categories available to move."
         },
         it: {
           promptSaver: "Prompt Saver",
@@ -588,7 +608,21 @@ const categories = [],
           description: "Descrizione",
           removeFromFavoritesConfirmation: "Sei sicuro di voler rimuovere questo prompt dai preferiti?",
           undo: "Annulla",
-          redo: "Ripristina"
+          redo: "Ripristina",
+          deleteAll: "Elimina Tutto",
+          deleteAllConfirmation: "Sei sicuro di voler eliminare TUTTI i dati? Questa azione non può essere annullata!\n\nQuesto rimuoverà permanentemente:\n- Tutte le categorie\n- Tutte le sottocategorie\n- Tutti i prompt\n- Tutti i preferiti\n\nDigita 'ELIMINA TUTTO' per confermare:",
+          deleteAllSuccess: "Tutti i dati sono stati eliminati con successo.",
+          deleteAllCancelled: "Operazione di eliminazione annullata.",
+          movePrompt: "Sposta Prompt",
+          selectTargetCategory: "Seleziona categoria di destinazione:",
+          promptMovedSuccessfully: "Prompt spostato con successo!",
+          cannotMoveToSameCategory: "Non è possibile spostare nella stessa categoria.",
+          moveCategory: "Sposta Categoria",
+          selectCategoryToMove: "Seleziona categoria da spostare:",
+          selectDestinationCategory: "Seleziona categoria di destinazione:",
+          categoryMovedSuccessfully: "Categoria spostata con successo come sottocategoria!",
+          cannotMoveToItself: "Non è possibile spostare una categoria su se stessa.",
+          noCategoriesAvailable: "Nessuna categoria disponibile da spostare."
         }
       };
 
@@ -1046,10 +1080,12 @@ function createCategoryBox(c) {
         asBtn = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]),
         adBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]),
         afBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]),
-        favBtn = createIconButton("favorite", "star", translations[currentLanguage]["addToFavorites"]);
+        favBtn = createIconButton("favorite", "star", translations[currentLanguage]["addToFavorites"]),
+        moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]);
   favBtn.classList.add("btn-favorite");
+  moveBtn.classList.add("btn-move");
 
-  actDiv.append(aeBtn, acBtn, asBtn, favBtn, adBtn, afBtn);
+  actDiv.append(aeBtn, acBtn, asBtn, favBtn, moveBtn, adBtn, afBtn);
   cb.appendChild(actDiv);
   cb.actionsDiv = actDiv;
 
@@ -1159,6 +1195,13 @@ function createCategoryBox(c) {
   favBtn.onclick = (e) => {
     e.stopPropagation();
     if (cb.selectedPrompt) toggleFavorite(cb.selectedPrompt, favBtn);
+  };
+  moveBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (cb.selectedPrompt) {
+      const subCatId = cb.selectedSubcategoryId || null;
+      showMovePromptDialog(c.id, cb.selectedPrompt.id, subCatId);
+    }
   };
 
   return cb;
@@ -2014,6 +2057,7 @@ function displaySearchPromptContent(result, container) {
   const shareBtn = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]);
   const fontBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]);
   const favBtn = createIconButton("favorite", "star", result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"]);
+  const moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]);
   const deleteBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
   
   // Update favorite button icon and styling
@@ -2052,6 +2096,11 @@ function displaySearchPromptContent(result, container) {
     favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
   };
   
+  moveBtn.onclick = (e) => {
+    e.stopPropagation();
+    showMovePromptDialog(result.categoryId, result.prompt.id, result.subcategoryId || null);
+  };
+  
   deleteBtn.onclick = (e) => {
     e.stopPropagation();
     if (confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
@@ -2082,7 +2131,7 @@ function displaySearchPromptContent(result, container) {
   };
   
   // Add all buttons to the actions div
-  searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, deleteBtn, fontBtn);
+  searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, moveBtn, deleteBtn, fontBtn);
   
   // Add buttons first, then prompt content
   container.appendChild(searchActionsDiv);
@@ -2101,9 +2150,10 @@ function displayFavoritePrompt(p, cId, cont, btn) {
         cB = createIconButton("warning", "copy", translations[currentLanguage]["copy"]),
         sB = createIconButton("primary", "share-alt", translations[currentLanguage]["share"]),
         fB = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]),
+        mB = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]),
         rfB = createIconButton("danger", "trash", translations[currentLanguage]["removeFromFavorites"]);
 
-  ad.append(eB, cB, sB, rfB, fB);
+  ad.append(eB, cB, sB, mB, rfB, fB);
   
   // Add buttons first, then prompt content
   cont.appendChild(ad);
@@ -2125,6 +2175,10 @@ function displayFavoritePrompt(p, cId, cont, btn) {
   fB.onclick = e => {
     e.stopPropagation();
     increaseFontSize(cont.querySelector(".display-prompt-text"));
+  };
+  mB.onclick = e => {
+    e.stopPropagation();
+    showMovePromptDialog(cId, p.id, null);
   };
   rfB.onclick = e => {
     e.stopPropagation();
@@ -2211,6 +2265,332 @@ document.getElementById("cleanupBtn").onclick = function() {
     renderCategories();
     alert(`Pulizia completata! Rimosse ${totalRemoved} sottocategorie chiaramente non valide.`);
   }
+};
+
+function showMovePromptDialog(sourceCategoryId, promptId, sourceSubcategoryId = null) {
+  // Create a simple select dialog
+  const targetCategories = categories.filter(c => c.id !== sourceCategoryId);
+  
+  if (targetCategories.length === 0) {
+    alert("Non ci sono altre categorie disponibili per lo spostamento.");
+    return;
+  }
+  
+  let optionsHtml = "";
+  targetCategories.forEach(c => {
+    optionsHtml += `<option value="${c.id}">${c.name}</option>`;
+  });
+  
+  const selectHtml = `
+    <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color);">
+      <h4>${translations[currentLanguage]["selectTargetCategory"]}</h4>
+      <select id="targetCategorySelect" style="width: 100%; padding: 10px; margin: 10px 0; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
+        ${optionsHtml}
+      </select>
+      <div style="margin-top: 15px;">
+        <button onclick="executeMove('${sourceCategoryId}', '${promptId}', '${sourceSubcategoryId}', document.getElementById('targetCategorySelect').value)" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;">Sposta</button>
+        <button onclick="closeMoveDialog()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">Annulla</button>
+      </div>
+    </div>
+  `;
+  
+  // Create overlay
+  const overlay = document.createElement("div");
+  overlay.id = "movePromptOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  `;
+  
+  const dialog = document.createElement("div");
+  dialog.innerHTML = selectHtml;
+  dialog.style.cssText = "max-width: 400px; width: 90%;";
+  
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+window.executeMove = function(sourceCategoryId, promptId, sourceSubcategoryId, targetCategoryId) {
+  if (sourceCategoryId === targetCategoryId) {
+    alert(translations[currentLanguage]["cannotMoveToSameCategory"]);
+    return;
+  }
+  
+  pushToHistory();
+  
+  // Find source and target categories
+  const sourceCategory = categories.find(c => c.id === sourceCategoryId);
+  const targetCategory = categories.find(c => c.id === targetCategoryId);
+  
+  if (!sourceCategory || !targetCategory) {
+    alert("Errore: categoria non trovata.");
+    return;
+  }
+  
+  let promptToMove = null;
+  
+  // Find and remove the prompt from source
+  if (sourceSubcategoryId && sourceSubcategoryId !== 'null') {
+    // Remove from subcategory
+    const sourceSubcategory = sourceCategory.subcategories.find(sc => sc.id === sourceSubcategoryId);
+    if (sourceSubcategory) {
+      const promptIndex = sourceSubcategory.prompts.findIndex(p => p.id === promptId);
+      if (promptIndex !== -1) {
+        promptToMove = sourceSubcategory.prompts.splice(promptIndex, 1)[0];
+      }
+    }
+  } else {
+    // Remove from main category
+    const promptIndex = sourceCategory.prompts.findIndex(p => p.id === promptId);
+    if (promptIndex !== -1) {
+      promptToMove = sourceCategory.prompts.splice(promptIndex, 1)[0];
+    }
+  }
+  
+  if (promptToMove) {
+    // Add to target category (always to main prompts, not subcategories)
+    targetCategory.prompts.push(promptToMove);
+    
+    sortCategoriesAndPrompts();
+    saveToLocalStorage();
+    renderCategories();
+    
+    // Close dialog
+    closeMoveDialog();
+    
+    alert(translations[currentLanguage]["promptMovedSuccessfully"]);
+    
+    // Open target category to show the moved prompt
+    toggleCategoryBox(targetCategoryId);
+  } else {
+    alert("Errore: prompt non trovato.");
+  }
+};
+
+window.closeMoveDialog = function() {
+  const overlay = document.getElementById("movePromptOverlay");
+  if (overlay) {
+    document.body.removeChild(overlay);
+  }
+};
+
+function showMoveCategoryDialog() {
+  if (categories.length < 2) {
+    alert(translations[currentLanguage]["noCategoriesAvailable"]);
+    return;
+  }
+  
+  let sourceCategoriesHtml = "";
+  let targetCategoriesHtml = "";
+  
+  categories.forEach(c => {
+    sourceCategoriesHtml += `<option value="${c.id}">${c.name}</option>`;
+    targetCategoriesHtml += `<option value="${c.id}">${c.name}</option>`;
+  });
+  
+  const dialogHtml = `
+    <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color); min-width: 400px;">
+      <h4>${translations[currentLanguage]["moveCategory"]}</h4>
+      
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectCategoryToMove"]}</label>
+        <select id="sourceCategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
+          ${sourceCategoriesHtml}
+        </select>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectDestinationCategory"]}</label>
+        <select id="targetCategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
+          ${targetCategoriesHtml}
+        </select>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button onclick="executeCategoryMove()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;">
+          <i class="fas fa-arrows-alt"></i> Sposta
+        </button>
+        <button onclick="closeMoveCategoryDialog()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+          <i class="fas fa-times"></i> Annulla
+        </button>
+      </div>
+      
+      <div style="margin-top: 15px; padding: 10px; background: var(--tertiary-background-color); border-radius: 3px; font-size: 14px;">
+        <i class="fas fa-info-circle"></i> <strong>Nota:</strong> La categoria selezionata diventerà una sottocategoria della categoria di destinazione.
+      </div>
+    </div>
+  `;
+  
+  // Create overlay
+  const overlay = document.createElement("div");
+  overlay.id = "moveCategoryOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  `;
+  
+  const dialog = document.createElement("div");
+  dialog.innerHTML = dialogHtml;
+  dialog.style.cssText = "max-width: 500px; width: 90%;";
+  
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  
+  // Update target options when source changes
+  document.getElementById("sourceCategorySelect").addEventListener("change", function() {
+    const sourceId = this.value;
+    const targetSelect = document.getElementById("targetCategorySelect");
+    targetSelect.innerHTML = "";
+    
+    categories.forEach(c => {
+      if (c.id !== sourceId) {
+        const option = document.createElement("option");
+        option.value = c.id;
+        option.textContent = c.name;
+        targetSelect.appendChild(option);
+      }
+    });
+  });
+  
+  // Trigger initial update
+  document.getElementById("sourceCategorySelect").dispatchEvent(new Event("change"));
+}
+
+window.executeCategoryMove = function() {
+  const sourceCategoryId = document.getElementById("sourceCategorySelect").value;
+  const targetCategoryId = document.getElementById("targetCategorySelect").value;
+  
+  if (sourceCategoryId === targetCategoryId) {
+    alert(translations[currentLanguage]["cannotMoveToItself"]);
+    return;
+  }
+  
+  pushToHistory();
+  
+  // Find source and target categories
+  const sourceCategoryIndex = categories.findIndex(c => c.id === sourceCategoryId);
+  const targetCategory = categories.find(c => c.id === targetCategoryId);
+  
+  if (sourceCategoryIndex === -1 || !targetCategory) {
+    alert("Errore: categoria non trovata.");
+    return;
+  }
+  
+  // Get the source category and remove it from the main categories array
+  const sourceCategory = categories.splice(sourceCategoryIndex, 1)[0];
+  
+  // Initialize subcategories array if it doesn't exist
+  if (!targetCategory.subcategories) {
+    targetCategory.subcategories = [];
+  }
+  
+  // Convert the source category to a subcategory format
+  const newSubcategory = {
+    id: sourceCategory.id,
+    name: sourceCategory.name,
+    prompts: sourceCategory.prompts
+  };
+  
+  // If the source category had subcategories, merge their prompts into the main prompts
+  if (sourceCategory.subcategories) {
+    sourceCategory.subcategories.forEach(subCat => {
+      newSubcategory.prompts.push(...subCat.prompts);
+    });
+  }
+  
+  // Add to target category's subcategories
+  targetCategory.subcategories.push(newSubcategory);
+  
+  sortCategoriesAndPrompts();
+  saveToLocalStorage();
+  renderCategories();
+  
+  // Close dialog
+  closeMoveCategoryDialog();
+  
+  alert(translations[currentLanguage]["categoryMovedSuccessfully"]);
+  
+  // Open target category to show the moved subcategory
+  toggleCategoryBox(targetCategoryId);
+};
+
+window.closeMoveCategoryDialog = function() {
+  const overlay = document.getElementById("moveCategoryOverlay");
+  if (overlay) {
+    document.body.removeChild(overlay);
+  }
+};
+
+document.getElementById("deleteAllBtn").onclick = function() {
+  const confirmationText = currentLanguage === "it" ? "ELIMINA TUTTO" : "DELETE ALL";
+  const userInput = prompt(translations[currentLanguage]["deleteAllConfirmation"]);
+  
+  if (userInput === confirmationText) {
+    // Clear all data
+    pushToHistory();
+    categories.length = 0;
+    historyStack.length = 0;
+    futureStack.length = 0;
+    
+    // Clear all storage methods
+    if (isLocalStorageAvailable()) {
+      try {
+        localStorage.removeItem("categories");
+        localStorage.removeItem("theme");
+      } catch(e) {
+        console.warn("Errore nella rimozione da localStorage:", e.message);
+      }
+    }
+    
+    if (isSessionStorageAvailable()) {
+      try {
+        sessionStorage.removeItem("categories");
+        sessionStorage.removeItem("theme");
+      } catch(e) {
+        console.warn("Errore nella rimozione da sessionStorage:", e.message);
+      }
+    }
+    
+    // Clear fallback storage
+    fallbackStorage = {};
+    
+    // Clear UI
+    document.getElementById("prompts-display-container").innerHTML = "";
+    document.getElementById("category-boxes-container").innerHTML = "";
+    document.getElementById("categories").innerHTML = "";
+    
+    // Reset theme to default
+    currentTheme = "dark";
+    applyTheme();
+    
+    // Re-render empty state
+    renderCategories();
+    
+    alert(translations[currentLanguage]["deleteAllSuccess"]);
+    console.log("✅ Tutti i dati sono stati eliminati con successo");
+  } else if (userInput !== null) {
+    alert(translations[currentLanguage]["deleteAllCancelled"]);
+  }
+};
+
+document.getElementById("moveCategoryBtn").onclick = function() {
+  showMoveCategoryDialog();
 };
 
 loadFromLocalStorage();
