@@ -2864,14 +2864,20 @@ pushToHistory();
 translatePage();
 
 function showMoveToSubcategoryDialog(sourceCategoryId, promptId, sourceSubcategoryId = null) {
+    console.log("Cerco categoria con ID:", sourceCategoryId);
+    console.log("Categorie disponibili:", categories.map(c => ({id: c.id, name: c.name, hasSubcategories: !!(c.subcategories && c.subcategories.length > 0)})));
+    
     const sourceCategory = categories.find(c => c.id === sourceCategoryId);
     if (!sourceCategory) {
-        alert("Categoria di origine non trovata.");
+        alert("Categoria di origine non trovata. ID cercato: " + sourceCategoryId);
         return;
     }
 
+    console.log("Categoria trovata:", sourceCategory.name);
+    console.log("Sottocategorie:", sourceCategory.subcategories);
+
     if (!sourceCategory.subcategories || sourceCategory.subcategories.length === 0) {
-        alert("Nessuna sottocategoria disponibile in questa categoria.");
+        alert("Nessuna sottocategoria disponibile in questa categoria: " + sourceCategory.name);
         return;
     }
 
@@ -2919,6 +2925,13 @@ function showMoveToSubcategoryDialog(sourceCategoryId, promptId, sourceSubcatego
 }
 
 window.executeMoveToSubcategory = function (sourceCategoryId, promptId, sourceSubcategoryId, targetSubcategoryId) {
+    console.log("executeMoveToSubcategory chiamata con:", {
+        sourceCategoryId,
+        promptId,
+        sourceSubcategoryId,
+        targetSubcategoryId
+    });
+
     if (!targetSubcategoryId) {
         alert("Seleziona una sottocategoria di destinazione.");
         return;
@@ -2939,7 +2952,7 @@ window.executeMoveToSubcategory = function (sourceCategoryId, promptId, sourceSu
     }
 
     let promptToMove;
-    if (sourceSubcategoryId) {
+    if (sourceSubcategoryId && sourceSubcategoryId !== 'null') {
         // Remove from source subcategory
         const sourceSubcategory = sourceCategory.subcategories.find(subcat => subcat.id === sourceSubcategoryId);
         if (!sourceSubcategory) {
