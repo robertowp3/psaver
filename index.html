@@ -680,7 +680,7 @@ function applyTheme() {
 
 document.getElementById("themeToggleBtn").addEventListener("click", function() {
   currentTheme = currentTheme === "dark" ? "light" : "dark";
-  
+
   // Try to save theme to localStorage first, then sessionStorage
   if (isLocalStorageAvailable()) {
     try {
@@ -689,7 +689,7 @@ document.getElementById("themeToggleBtn").addEventListener("click", function() {
       console.warn("Errore salvataggio tema localStorage:", e.message);
     }
   }
-  
+
   if (isSessionStorageAvailable()) {
     try {
       sessionStorage.setItem("theme", currentTheme);
@@ -697,7 +697,7 @@ document.getElementById("themeToggleBtn").addEventListener("click", function() {
       console.warn("Errore salvataggio tema sessionStorage:", e.message);
     }
   }
-  
+
   applyTheme();
 });
 
@@ -826,7 +826,7 @@ function loadFromLocalStorage() {
   // Try multiple storage methods in order of preference
   let storageData = null;
   let storageMethod = null;
-  
+
   // Method 1: Try localStorage
   if (isLocalStorageAvailable()) {
     try {
@@ -839,7 +839,7 @@ function loadFromLocalStorage() {
       console.warn("Errore localStorage:", e.message);
     }
   }
-  
+
   // Method 2: Try sessionStorage if localStorage failed
   if (!storageData && isSessionStorageAvailable()) {
     try {
@@ -852,22 +852,22 @@ function loadFromLocalStorage() {
       console.warn("Errore sessionStorage:", e.message);
     }
   }
-  
+
   // Method 3: Try fallback storage
   if (!storageData && fallbackStorage.categories) {
     storageData = fallbackStorage.categories;
     storageMethod = "fallbackStorage";
     console.log("Dati caricati da fallback storage");
   }
-  
+
   // Show warning only if no storage method worked
   if (!storageData && !isLocalStorageAvailable() && !isSessionStorageAvailable()) {
     const isBrave = navigator.userAgent.includes('Brave') || 
                    (navigator.brave && navigator.brave.isBrave);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    
+
     let warningMessage = "⚠️ Impossibile salvare i dati permanentemente.\n\n";
-    
+
     if (isBrave) {
       warningMessage += "🛡️ BRAVE BROWSER RILEVATO:\n";
       warningMessage += "1. Clicca l'icona dello scudo nella barra degli indirizzi\n";
@@ -883,25 +883,25 @@ function loadFromLocalStorage() {
       warningMessage += "2. Disabilita 'Impedisci monitoraggio cross-site'\n";
       warningMessage += "3. Ricarica la pagina\n\n";
     }
-    
+
     warningMessage += "💡 I dati saranno salvati solo per questa sessione.";
     alert(warningMessage);
   }
-  
+
   console.log("Caricamento da " + (storageMethod || "nessuna fonte") + ":", storageData ? "Dati trovati" : "Nessun dato trovato");
-  
+
   if (storageData) {
     try {
       const parsedData = JSON.parse(storageData);
       console.log("Categorie caricate:", parsedData.length);
-      
+
       // Debug: log subcategories being loaded
       parsedData.forEach(c => {
         if (c.subcategories && c.subcategories.length > 0) {
           console.log(`Caricando categoria "${c.name}" con ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
         }
       });
-      
+
       loadCategoriesData(parsedData);
     } catch(e) {
       console.error("Errore nel parsing dei dati:", e);
@@ -923,7 +923,7 @@ function loadCategoriesData(data) {
       pr.tags = pr.tags || [];
       pr.favorite = pr.favorite || false;
     });
-    
+
     // Preserve subcategories - only sanitize names, don't filter unless completely empty
     if (c.subcategories) {
       c.subcategories = c.subcategories.filter(subCat => {
@@ -936,14 +936,14 @@ function loadCategoriesData(data) {
         name: sanitizeHTML(subCat.name.trim()),
         prompts: subCat.prompts || []
       }));
-      
+
       // Only delete subcategories array if it's completely empty
       if (c.subcategories.length === 0) {
         delete c.subcategories;
       }
     }
   });
-  
+
   categories.push(...data);
   sortCategoriesAndPrompts();
   saveToLocalStorage();
@@ -953,22 +953,22 @@ function loadCategoriesData(data) {
 function saveToLocalStorage() {
   const dataToSave = JSON.stringify(categories);
   let saved = false;
-  
+
   console.log("💾 Tentativo di salvataggio. Categorie:", categories.length);
-  
+
   // Debug: log subcategories being saved
   categories.forEach(c => {
     if (c.subcategories && c.subcategories.length > 0) {
       console.log(`Categoria "${c.name}" ha ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
     }
   });
-  
+
   // Try localStorage first
   if (isLocalStorageAvailable()) {
     try {
       localStorage.setItem("categories", dataToSave);
       console.log("✅ Dati salvati nel localStorage. Numero categorie:", categories.length);
-      
+
       // Verify save was successful
       const savedData = localStorage.getItem("categories");
       if (savedData) {
@@ -983,7 +983,7 @@ function saveToLocalStorage() {
       }
     }
   }
-  
+
   // Try sessionStorage if localStorage failed
   if (!saved && isSessionStorageAvailable()) {
     try {
@@ -994,10 +994,10 @@ function saveToLocalStorage() {
       console.error("❌ Errore nel salvataggio sessionStorage:", error.message);
     }
   }
-  
+
   // Always save to fallback storage as last resort
   fallbackStorage.categories = dataToSave;
-  
+
   if (!saved) {
     console.warn("🔄 Dati salvati solo in memoria temporanea (fallback storage).");
   }
@@ -1046,10 +1046,10 @@ function renderCategories() {
 
 function updateCategoryDropdowns() {
   const select1 = document.getElementById("categorySelect");
-  
+
   // Clear existing options except the first one
   select1.innerHTML = '<option value="">Seleziona categoria esistente...</option>';
-  
+
   // Add categories to dropdown
   categories.forEach(c => {
     const option1 = document.createElement("option");
@@ -1098,11 +1098,13 @@ function createCategoryBox(c) {
         adBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]),
         afBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]),
         favBtn = createIconButton("favorite", "star", translations[currentLanguage]["addToFavorites"]),
-        moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]);
+        moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]),
+        moveToSubBtn = createIconButton("info", "folder-open", "Sposta in Sottocategoria");
   favBtn.classList.add("btn-favorite");
   moveBtn.classList.add("btn-move");
+  moveToSubBtn.classList.add("btn-move-subcategory");
 
-  actDiv.append(aeBtn, acBtn, asBtn, favBtn, moveBtn, adBtn, afBtn);
+  actDiv.append(aeBtn, acBtn, asBtn, favBtn, moveBtn, moveToSubBtn, adBtn, afBtn);
   cb.appendChild(actDiv);
   cb.actionsDiv = actDiv;
 
@@ -1131,19 +1133,19 @@ function createCategoryBox(c) {
   if (c.subcategories && c.subcategories.length > 0) {
     const subCatContainer = document.createElement("div");
     subCatContainer.className = "subcategories-container mb-3";
-    
+
     const subCatTitle = document.createElement("h6");
     subCatTitle.textContent = "Sottocategorie:";
     subCatTitle.className = "mb-2";
     subCatContainer.appendChild(subCatTitle);
-    
+
     const subCatButtons = document.createElement("div");
     subCatButtons.className = "d-flex flex-wrap";
-    
+
     c.subcategories.forEach(subCat => {
       const subCatDiv = document.createElement("div");
       subCatDiv.className = "d-inline-flex align-items-center mr-2 mb-2";
-      
+
       const subBtn = document.createElement("button");
       subBtn.className = "btn btn-outline-secondary btn-sm";
       subBtn.textContent = subCat.name;
@@ -1154,7 +1156,7 @@ function createCategoryBox(c) {
         subBtn.classList.add('active');
         displaySubcategoryPrompts(subCat, c.id, cb);
       };
-      
+
       const deleteSubBtn = document.createElement("button");
       deleteSubBtn.className = "btn btn-danger btn-sm ml-1";
       deleteSubBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -1163,12 +1165,12 @@ function createCategoryBox(c) {
         e.stopPropagation();
         deleteSubcategory(c.id, subCat.id);
       };
-      
+
       subCatDiv.appendChild(subBtn);
       subCatDiv.appendChild(deleteSubBtn);
       subCatButtons.appendChild(subCatDiv);
     });
-    
+
     subCatContainer.appendChild(subCatButtons);
     cb.appendChild(subCatContainer);
   }
@@ -1213,11 +1215,15 @@ function createCategoryBox(c) {
     e.stopPropagation();
     if (cb.selectedPrompt) toggleFavorite(cb.selectedPrompt, favBtn);
   };
-  moveBtn.onclick = (e) => {
+  moveBtn.onclick = e => {
+    e.stopPropagation();
+    showMovePromptDialog(c.id, cb.selectedPrompt.id, null);
+  };
+  moveToSubBtn.onclick = e => {
     e.stopPropagation();
     if (cb.selectedPrompt) {
       const subCatId = cb.selectedSubcategoryId || null;
-      showMovePromptDialog(c.id, cb.selectedPrompt.id, subCatId);
+      showMoveToSubcategoryDialog(c.id, cb.selectedPrompt.id, subCatId);
     }
   };
 
@@ -1269,13 +1275,13 @@ function displaySelectedPrompt(d, p, cId) {
     b.style.color = "";
     b.style.borderColor = "";
   });
-  
+
   // Add active class and force green styling
   d.classList.add("active");
   d.style.backgroundColor = "#28a745";
   d.style.color = "white";
   d.style.borderColor = "#28a745";
-  
+
   cb.actionsDiv.style.display = "block";
 
   const favBtn = cb.actionsDiv.querySelector(".btn-favorite");
@@ -1324,17 +1330,17 @@ function copyPromptText(p) {
   d.innerHTML = p.description;
   const txt = d.textContent || d.innerText || "";
   const htmlContent = p.description;
-  
+
   // Try to copy both HTML and plain text formats
   if (navigator.clipboard && navigator.clipboard.write) {
     const data = [];
-    
+
     // Add HTML format
     data.push(new ClipboardItem({
       'text/html': new Blob([htmlContent], { type: 'text/html' }),
       'text/plain': new Blob([txt], { type: 'text/plain' })
     }));
-    
+
     navigator.clipboard.write(data)
       .then(() => alert(translations[currentLanguage]["copySuccess"]))
       .catch(e => {
@@ -1413,9 +1419,9 @@ function showNewPromptForm(cId, subCatId = null) {
         tags: tags.map(t => sanitizeHTML(t)),
         favorite: false
       };
-      
+
       const c = categories.find(cc => cc.id === cId);
-      
+
       if (subCatId) {
         // Add to subcategory
         const subCat = c.subcategories.find(sc => sc.id === subCatId);
@@ -1426,7 +1432,7 @@ function showNewPromptForm(cId, subCatId = null) {
         // Add to main category
         c.prompts.push(np);
       }
-      
+
       pushToHistory();
       sortCategoriesAndPrompts();
       saveToLocalStorage();
@@ -1528,7 +1534,7 @@ function searchPrompts() {
   categories.forEach(c => {
     // Search in main category name
     const cn = c.name.toLowerCase();
-    
+
     // Search in main category prompts
     c.prompts.forEach(p => {
       const pt = (p.description || "").toLowerCase(),
@@ -1544,12 +1550,12 @@ function searchPrompts() {
         searchResults.push({prompt: p, categoryId: c.id});
       }
     });
-    
+
     // Search in subcategories and their prompts
     if (c.subcategories) {
       c.subcategories.forEach(subCat => {
         const subCatName = subCat.name.toLowerCase();
-        
+
         // Search subcategory name
         if (subCatName.includes(q)) {
           found = true;
@@ -1576,42 +1582,42 @@ function searchPrompts() {
       });
     }
   });
-  
+
   // Sort search results alphabetically by prompt title
   searchResults.sort((a, b) => a.prompt.title.localeCompare(b.prompt.title, currentLanguage));
-  
+
   // Create containers for titles and selected prompt
   const searchTitlesContainer = document.createElement("div");
   searchTitlesContainer.className = "search-titles-container d-flex flex-wrap mb-3";
-  
+
   const selectedSearchContainer = document.createElement("div");
   selectedSearchContainer.className = "selected-search-container";
-  
+
   pdc.appendChild(searchTitlesContainer);
   pdc.appendChild(selectedSearchContainer);
-  
+
   // Add title buttons for each result
   searchResults.forEach(result => {
     const titleButton = document.createElement("button");
     titleButton.className = "btn btn-secondary mr-2 mb-2";
     titleButton.textContent = result.prompt.title;
-    
+
     // Add subcategory info to title if from subcategory
     if (result.subcategoryName) {
       titleButton.innerHTML = `${result.prompt.title} <small class="text-muted">(<i class="fas fa-folder"></i> ${result.subcategoryName})</small>`;
     }
-    
+
     titleButton.onclick = () => {
       // Remove active class from all search title buttons
       searchTitlesContainer.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
-      
+
       // Add active class to clicked button
       titleButton.classList.add('active');
-      
+
       // Display the selected prompt content
       displaySearchPromptContent(result, selectedSearchContainer);
     };
-    
+
     searchTitlesContainer.appendChild(titleButton);
   });
 
@@ -1655,18 +1661,18 @@ let selectedCategoryFromDropdown = null;
 document.getElementById("addCategoryBtn2").onclick = function() {
   const cn = document.getElementById("newCategoryInput2").value.trim();
   const selectedCategoryBox = document.querySelector('.category-box[style*="block"]');
-  
+
   if (cn && cn.length >= 1) {
     // Very permissive validation - only block completely empty names
     if (cn.length < 1) {
       alert("Nome sottocategoria non può essere vuoto.");
       return;
     }
-    
+
     // Priority: 1) Selected from dropdown, 2) Visible category box, 3) Find by name match
     let parentCategory = null;
     let parentCategoryId = null;
-    
+
     if (selectedCategoryFromDropdown) {
       parentCategory = selectedCategoryFromDropdown;
       parentCategoryId = parentCategory.id;
@@ -1683,25 +1689,25 @@ document.getElementById("addCategoryBtn2").onclick = function() {
         }
       }
     }
-    
+
     if (parentCategory && parentCategoryId) {
       // Initialize subcategories array if it doesn't exist
       if (!parentCategory.subcategories) {
         parentCategory.subcategories = [];
       }
-      
+
       // Check if subcategory name already exists
       if (parentCategory.subcategories.find(sub => sub.name.toLowerCase() === cn.toLowerCase())) {
         alert("Una sottocategoria con questo nome esiste già.");
         return;
       }
-      
+
       const newSubcategory = { 
         id: generateUniqueId(), 
         name: sanitizeHTML(cn), 
         prompts: [] 
       };
-      
+
       pushToHistory();
       parentCategory.subcategories.push(newSubcategory);
       sortCategoriesAndPrompts();
@@ -1801,10 +1807,10 @@ function openEditModal(cId, pId, subCatId = null) {
   currentEdit.categoryId = cId;
   currentEdit.promptId = pId;
   currentEdit.subcategoryId = subCatId;
-  
+
   const c = categories.find(cc => cc.id === cId);
   let p;
-  
+
   if (subCatId) {
     // Find prompt in subcategory
     const subCat = c.subcategories.find(sc => sc.id === subCatId);
@@ -1831,7 +1837,7 @@ $("#editPromptForm").on("submit", function(e) {
   if (t && pu && d && d !== "") {
     const c = categories.find(cc => cc.id === currentEdit.categoryId);
     let p;
-    
+
     if (currentEdit.subcategoryId) {
       // Edit prompt in subcategory
       const subCat = c.subcategories.find(sc => sc.id === currentEdit.subcategoryId);
@@ -1840,7 +1846,7 @@ $("#editPromptForm").on("submit", function(e) {
       // Edit prompt in main category
       p = c.prompts.find(pp => pp.id === currentEdit.promptId);
     }
-    
+
     pushToHistory();
     p.title = sanitizeHTML(t);
     p.purpose = sanitizeHTML(pu);
@@ -1991,11 +1997,11 @@ function renderFavorites() {
 function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   const ptc = categoryBox.querySelector(".prompt-titles-container");
   const spc = categoryBox.querySelector(".selected-prompt-container");
-  
+
   // Clear current prompts display
   ptc.innerHTML = "";
   spc.innerHTML = "";
-  
+
   // Add back button
   const backBtn = document.createElement("button");
   backBtn.className = "btn btn-secondary btn-sm mr-2 mb-2";
@@ -2005,7 +2011,7 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
     toggleCategoryBox(parentCategoryId);
   };
   ptc.appendChild(backBtn);
-  
+
   // Add subcategory title
   const subTitle = document.createElement("h5");
   subTitle.textContent = subCat.name;
@@ -2014,7 +2020,7 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
   subTitle.style.marginRight = "20px";
   subTitle.style.color = "white";
   ptc.appendChild(subTitle);
-  
+
   // Add subcategory prompts
   subCat.prompts.forEach(p => {
     const promptDiv = createPromptTitleDiv(p, parentCategoryId);
@@ -2026,7 +2032,7 @@ function displaySubcategoryPrompts(subCat, parentCategoryId, categoryBox) {
     };
     ptc.appendChild(promptDiv);
   });
-  
+
   // Add button to create new prompt in subcategory
   const newPromptBtn = document.createElement("button");
   newPromptBtn.className = "btn btn-success btn-sm";
@@ -2046,7 +2052,7 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
   // Remove active class from all buttons (both regular and subcategory prompts)
   div.parentElement.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
   div.parentElement.querySelectorAll(".subcategory-prompt").forEach(b => b.classList.remove("active"));
-  
+
   // Add active class to the selected subcategory prompt
   div.classList.add("active");
   categoryBox.actionsDiv.style.display = "block";
@@ -2060,14 +2066,14 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
 
 function displaySearchPromptContent(result, container) {
   container.innerHTML = "";
-  
+
   // Create action buttons first
   const searchActionsDiv = document.createElement("div");
   searchActionsDiv.className = "search-actions d-flex flex-wrap align-items-center mb-3 p-2";
   searchActionsDiv.style.backgroundColor = "var(--tertiary-background-color)";
   searchActionsDiv.style.borderRadius = "5px";
   searchActionsDiv.style.border = "1px solid var(--quaternary-background-color)";
-  
+
   // Create buttons with proper styling
   const editBtn = createIconButton("info", "edit", translations[currentLanguage]["edit"]);
   const copyBtn = createIconButton("warning", "copy", translations[currentLanguage]["copy"]);
@@ -2076,33 +2082,33 @@ function displaySearchPromptContent(result, container) {
   const favBtn = createIconButton("favorite", "star", result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"]);
   const moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]);
   const deleteBtn = createIconButton("danger", "trash", translations[currentLanguage]["delete"]);
-  
+
   // Update favorite button icon and styling
   favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
   favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
-  
+
   // Add click handlers with comprehensive functionality
   editBtn.onclick = (e) => {
     e.stopPropagation();
     openEditModal(result.categoryId, result.prompt.id, result.subcategoryId || null);
   };
-  
+
   copyBtn.onclick = (e) => {
     e.stopPropagation();
     copyPromptText(result.prompt);
   };
-  
+
   shareBtn.onclick = (e) => {
     e.stopPropagation();
     sharePrompt(result.prompt);
   };
-  
+
   fontBtn.onclick = (e) => {
     e.stopPropagation();
     const textDiv = container.querySelector(".display-prompt-text");
     increaseFontSize(textDiv);
   };
-  
+
   favBtn.onclick = (e) => {
     e.stopPropagation();
     pushToHistory();
@@ -2112,12 +2118,22 @@ function displaySearchPromptContent(result, container) {
     favBtn.title = result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"];
     favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
   };
-  
-  moveBtn.onclick = (e) => {
+
+  moveBtn.onclick = e => {
     e.stopPropagation();
     showMovePromptDialog(result.categoryId, result.prompt.id, result.subcategoryId || null);
   };
-  
+
+  // Add move to subcategory button for favorites
+  const moveToSubBtn = createIconButton("info", "folder-open", "Sposta in Sottocategoria");
+  moveToSubBtn.classList.add("btn-move-subcategory");
+  searchActionsDiv.insertBefore(moveToSubBtn, moveBtn);
+
+  moveToSubBtn.onclick = e => {
+    e.stopPropagation();
+    showMoveToSubcategoryDialog(result.categoryId, result.prompt.id, result.subcategoryId || null);
+  };
+
   deleteBtn.onclick = (e) => {
     e.stopPropagation();
     if (confirm(translations[currentLanguage]["deletePromptConfirmation"])) {
@@ -2146,10 +2162,10 @@ function displaySearchPromptContent(result, container) {
       }
     }
   };
-  
+
   // Add all buttons to the actions div
   searchActionsDiv.append(editBtn, copyBtn, shareBtn, favBtn, moveBtn, deleteBtn, fontBtn);
-  
+
   // Add buttons first, then prompt content
   container.appendChild(searchActionsDiv);
   const promptContent = createPromptContent(result.prompt, result.categoryId);
@@ -2158,7 +2174,7 @@ function displaySearchPromptContent(result, container) {
 
 function displayFavoritePrompt(p, cId, cont, btn) {
   cont.innerHTML = "";
-  
+
   // Create action buttons first
   const ad = document.createElement("div");
   ad.className = "favorite-actions mb-3";
@@ -2171,7 +2187,7 @@ function displayFavoritePrompt(p, cId, cont, btn) {
         rfB = createIconButton("danger", "trash", translations[currentLanguage]["removeFromFavorites"]);
 
   ad.append(eB, cB, sB, mB, rfB, fB);
-  
+
   // Add buttons first, then prompt content
   cont.appendChild(ad);
   const pd = createPromptContent(p, cId);
@@ -2196,6 +2212,16 @@ function displayFavoritePrompt(p, cId, cont, btn) {
   mB.onclick = e => {
     e.stopPropagation();
     showMovePromptDialog(cId, p.id, null);
+  };
+
+  // Add move to subcategory button for favorites
+  const moveToSubBtn = createIconButton("info", "folder-open", "Sposta in Sottocategoria");
+  moveToSubBtn.classList.add("btn-move-subcategory");
+  ad.insertBefore(moveToSubBtn, mB);
+
+  moveToSubBtn.onclick = e => {
+    e.stopPropagation();
+    showMoveToSubcategoryDialog(cId, p.id, null);
   };
   rfB.onclick = e => {
     e.stopPropagation();
@@ -2243,33 +2269,33 @@ document.getElementById("redoBtn").onclick = redoAction;
 document.getElementById("cleanupBtn").onclick = function() {
   if (confirm("Vuoi rimuovere sottocategorie con nomi chiaramente non validi (es. solo lettere casuali)?")) {
     pushToHistory();
-    
+
     let totalRemoved = 0;
     categories.forEach(c => {
       if (c.subcategories) {
         const beforeCount = c.subcategories.length;
         c.subcategories = c.subcategories.filter(subCat => {
           if (!subCat.name || subCat.name.trim() === "") return false;
-          
+
           const cleanName = subCat.name.trim();
-          
+
           // More conservative filtering - only remove obvious garbage
           if (cleanName.length < 1) return false;
           if (cleanName.match(/^[xyz]+$/i) && cleanName.length <= 3) return false;
           if (cleanName.match(/^[qwerty]{4,}$/i)) return false;
           if (cleanName.match(/^[asdf]{4,}$/i)) return false;
           if (cleanName.match(/^[zxcv]{4,}$/i)) return false;
-          
+
           // Remove only obvious repeated patterns
           if (cleanName.match(/^(.)\1{4,}$/i)) return false; // 5+ repeated characters
-          
+
           return true;
         });
-        
+
         if (c.subcategories.length === 0) {
           delete c.subcategories;
         }
-        
+
         const removed = beforeCount - c.subcategories.length;
         if (removed > 0) {
           totalRemoved += removed;
@@ -2277,7 +2303,7 @@ document.getElementById("cleanupBtn").onclick = function() {
         }
       }
     });
-    
+
     saveToLocalStorage();
     renderCategories();
     alert(`Pulizia completata! Rimosse ${totalRemoved} sottocategorie chiaramente non valide.`);
@@ -2287,17 +2313,17 @@ document.getElementById("cleanupBtn").onclick = function() {
 function showMovePromptDialog(sourceCategoryId, promptId, sourceSubcategoryId = null) {
   // Create a simple select dialog
   const targetCategories = categories.filter(c => c.id !== sourceCategoryId);
-  
+
   if (targetCategories.length === 0) {
     alert("Non ci sono altre categorie disponibili per lo spostamento.");
     return;
   }
-  
+
   let optionsHtml = "";
   targetCategories.forEach(c => {
     optionsHtml += `<option value="${c.id}">${c.name}</option>`;
   });
-  
+
   const selectHtml = `
     <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color);">
       <h4>${translations[currentLanguage]["selectTargetCategory"]}</h4>
@@ -2310,7 +2336,7 @@ function showMovePromptDialog(sourceCategoryId, promptId, sourceSubcategoryId = 
       </div>
     </div>
   `;
-  
+
   // Create overlay
   const overlay = document.createElement("div");
   overlay.id = "movePromptOverlay";
@@ -2326,11 +2352,11 @@ function showMovePromptDialog(sourceCategoryId, promptId, sourceSubcategoryId = 
     align-items: center;
     z-index: 1000;
   `;
-  
+
   const dialog = document.createElement("div");
   dialog.innerHTML = selectHtml;
   dialog.style.cssText = "max-width: 400px; width: 90%;";
-  
+
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 }
@@ -2340,20 +2366,20 @@ window.executeMove = function(sourceCategoryId, promptId, sourceSubcategoryId, t
     alert(translations[currentLanguage]["cannotMoveToSameCategory"]);
     return;
   }
-  
+
   pushToHistory();
-  
+
   // Find source and target categories
   const sourceCategory = categories.find(c => c.id === sourceCategoryId);
   const targetCategory = categories.find(c => c.id === targetCategoryId);
-  
+
   if (!sourceCategory || !targetCategory) {
     alert("Errore: categoria non trovata.");
     return;
   }
-  
+
   let promptToMove = null;
-  
+
   // Find and remove the prompt from source
   if (sourceSubcategoryId && sourceSubcategoryId !== 'null') {
     // Remove from subcategory
@@ -2371,20 +2397,20 @@ window.executeMove = function(sourceCategoryId, promptId, sourceSubcategoryId, t
       promptToMove = sourceCategory.prompts.splice(promptIndex, 1)[0];
     }
   }
-  
+
   if (promptToMove) {
     // Add to target category (always to main prompts, not subcategories)
     targetCategory.prompts.push(promptToMove);
-    
+
     sortCategoriesAndPrompts();
     saveToLocalStorage();
     renderCategories();
-    
+
     // Close dialog
     closeMoveDialog();
-    
+
     alert(translations[currentLanguage]["promptMovedSuccessfully"]);
-    
+
     // Open target category to show the moved prompt
     toggleCategoryBox(targetCategoryId);
   } else {
@@ -2404,33 +2430,33 @@ function showMoveCategoryDialog() {
     alert(translations[currentLanguage]["noCategoriesAvailable"]);
     return;
   }
-  
+
   let sourceCategoriesHtml = "";
   let targetCategoriesHtml = "";
-  
+
   categories.forEach(c => {
     sourceCategoriesHtml += `<option value="${c.id}">${c.name}</option>`;
     targetCategoriesHtml += `<option value="${c.id}">${c.name}</option>`;
   });
-  
+
   const dialogHtml = `
     <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color); min-width: 400px;">
       <h4>${translations[currentLanguage]["moveCategory"]}</h4>
-      
+
       <div style="margin: 15px 0;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectCategoryToMove"]}</label>
         <select id="sourceCategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
           ${sourceCategoriesHtml}
         </select>
       </div>
-      
+
       <div style="margin: 15px 0;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectDestinationCategory"]}</label>
         <select id="targetCategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
           ${targetCategoriesHtml}
         </select>
       </div>
-      
+
       <div style="margin-top: 20px;">
         <button onclick="executeCategoryMove()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;">
           <i class="fas fa-arrows-alt"></i> Sposta
@@ -2439,13 +2465,13 @@ function showMoveCategoryDialog() {
           <i class="fas fa-times"></i> Annulla
         </button>
       </div>
-      
+
       <div style="margin-top: 15px; padding: 10px; background: var(--tertiary-background-color); border-radius: 3px; font-size: 14px;">
         <i class="fas fa-info-circle"></i> <strong>Nota:</strong> La categoria selezionata diventerà una sottocategoria della categoria di destinazione.
       </div>
     </div>
   `;
-  
+
   // Create overlay
   const overlay = document.createElement("div");
   overlay.id = "moveCategoryOverlay";
@@ -2461,20 +2487,20 @@ function showMoveCategoryDialog() {
     align-items: center;
     z-index: 1000;
   `;
-  
+
   const dialog = document.createElement("div");
   dialog.innerHTML = dialogHtml;
   dialog.style.cssText = "max-width: 500px; width: 90%;";
-  
+
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
-  
+
   // Update target options when source changes
   document.getElementById("sourceCategorySelect").addEventListener("change", function() {
     const sourceId = this.value;
     const targetSelect = document.getElementById("targetCategorySelect");
     targetSelect.innerHTML = "";
-    
+
     categories.forEach(c => {
       if (c.id !== sourceId) {
         const option = document.createElement("option");
@@ -2484,7 +2510,7 @@ function showMoveCategoryDialog() {
       }
     });
   });
-  
+
   // Trigger initial update
   document.getElementById("sourceCategorySelect").dispatchEvent(new Event("change"));
 }
@@ -2492,57 +2518,57 @@ function showMoveCategoryDialog() {
 window.executeCategoryMove = function() {
   const sourceCategoryId = document.getElementById("sourceCategorySelect").value;
   const targetCategoryId = document.getElementById("targetCategorySelect").value;
-  
+
   if (sourceCategoryId === targetCategoryId) {
     alert(translations[currentLanguage]["cannotMoveToItself"]);
     return;
   }
-  
+
   pushToHistory();
-  
+
   // Find source and target categories
   const sourceCategoryIndex = categories.findIndex(c => c.id === sourceCategoryId);
   const targetCategory = categories.find(c => c.id === targetCategoryId);
-  
+
   if (sourceCategoryIndex === -1 || !targetCategory) {
     alert("Errore: categoria non trovata.");
     return;
   }
-  
+
   // Get the source category and remove it from the main categories array
   const sourceCategory = categories.splice(sourceCategoryIndex, 1)[0];
-  
+
   // Initialize subcategories array if it doesn't exist
   if (!targetCategory.subcategories) {
     targetCategory.subcategories = [];
   }
-  
+
   // Convert the source category to a subcategory format
   const newSubcategory = {
     id: sourceCategory.id,
     name: sourceCategory.name,
     prompts: sourceCategory.prompts
   };
-  
+
   // If the source category had subcategories, merge their prompts into the main prompts
   if (sourceCategory.subcategories) {
     sourceCategory.subcategories.forEach(subCat => {
       newSubcategory.prompts.push(...subCat.prompts);
     });
   }
-  
+
   // Add to target category's subcategories
   targetCategory.subcategories.push(newSubcategory);
-  
+
   sortCategoriesAndPrompts();
   saveToLocalStorage();
   renderCategories();
-  
+
   // Close dialog
   closeMoveCategoryDialog();
-  
+
   alert(translations[currentLanguage]["categoryMovedSuccessfully"]);
-  
+
   // Open target category to show the moved subcategory
   toggleCategoryBox(targetCategoryId);
 };
@@ -2570,21 +2596,21 @@ function showMovePromptBetweenSubcategoriesDialog() {
       });
     }
   });
-  
+
   if (allSubcategories.length < 2) {
     alert(translations[currentLanguage]["noSubcategoriesAvailable"]);
     return;
   }
-  
+
   let sourceSubcategoriesHtml = "";
   allSubcategories.forEach(subcat => {
     sourceSubcategoriesHtml += `<option value="${subcat.id}" data-category-id="${subcat.categoryId}">${subcat.categoryName} > ${subcat.name} (${subcat.prompts.length} prompts)</option>`;
   });
-  
+
   const dialogHtml = `
     <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color); min-width: 500px; max-height: 80vh; overflow-y: auto;">
       <h4>${translations[currentLanguage]["movePromptBetweenSubcategories"]}</h4>
-      
+
       <div style="margin: 15px 0;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectSourceSubcategory"]}</label>
         <select id="sourceSubcategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
@@ -2592,21 +2618,21 @@ function showMovePromptBetweenSubcategoriesDialog() {
           ${sourceSubcategoriesHtml}
         </select>
       </div>
-      
+
       <div style="margin: 15px 0;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectPromptToMove"]}</label>
         <select id="promptToMoveSelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;" disabled>
           <option value="">-- Prima seleziona una sottocategoria --</option>
         </select>
       </div>
-      
+
       <div style="margin: 15px 0;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectTargetSubcategory"]}</label>
         <select id="targetSubcategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;" disabled>
           <option value="">-- Prima seleziona sottocategoria di origine --</option>
         </select>
       </div>
-      
+
       <div style="margin-top: 20px;">
         <button onclick="executePromptMoveBetweenSubcategories()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;" disabled id="executeSubcategoryMoveBtn">
           <i class="fas fa-exchange-alt"></i> Sposta Prompt
@@ -2615,13 +2641,13 @@ function showMovePromptBetweenSubcategoriesDialog() {
           <i class="fas fa-times"></i> Annulla
         </button>
       </div>
-      
+
       <div style="margin-top: 15px; padding: 10px; background: var(--tertiary-background-color); border-radius: 3px; font-size: 14px;">
         <i class="fas fa-info-circle"></i> <strong>Info:</strong> Questa funzione sposta un prompt da una sottocategoria a un'altra sottocategoria.
       </div>
     </div>
   `;
-  
+
   // Create overlay
   const overlay = document.createElement("div");
   overlay.id = "movePromptSubcategoryOverlay";
@@ -2637,28 +2663,28 @@ function showMovePromptBetweenSubcategoriesDialog() {
     align-items: center;
     z-index: 1000;
   `;
-  
+
   const dialog = document.createElement("div");
   dialog.innerHTML = dialogHtml;
   dialog.style.cssText = "max-width: 600px; width: 90%;";
-  
+
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
-  
+
   // Add event listeners
   document.getElementById("sourceSubcategorySelect").addEventListener("change", function() {
     const sourceSubcategoryId = this.value;
     const promptSelect = document.getElementById("promptToMoveSelect");
     const targetSelect = document.getElementById("targetSubcategorySelect");
     const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
-    
+
     // Reset and disable dependent selects
     promptSelect.innerHTML = '<option value="">-- Seleziona prompt da spostare --</option>';
     targetSelect.innerHTML = '<option value="">-- Seleziona sottocategoria di destinazione --</option>';
     promptSelect.disabled = true;
     targetSelect.disabled = true;
     executeBtn.disabled = true;
-    
+
     if (sourceSubcategoryId) {
       // Find the selected subcategory and populate prompts
       const sourceSubcat = allSubcategories.find(s => s.id === sourceSubcategoryId);
@@ -2670,7 +2696,7 @@ function showMovePromptBetweenSubcategoriesDialog() {
           option.textContent = prompt.title;
           promptSelect.appendChild(option);
         });
-        
+
         // Populate target subcategories (exclude source)
         targetSelect.disabled = false;
         allSubcategories.forEach(subcat => {
@@ -2687,13 +2713,13 @@ function showMovePromptBetweenSubcategoriesDialog() {
       }
     }
   });
-  
+
   document.getElementById("promptToMoveSelect").addEventListener("change", function() {
     const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
     const targetSelect = document.getElementById("targetSubcategorySelect");
     executeBtn.disabled = !(this.value && targetSelect.value);
   });
-  
+
   document.getElementById("targetSubcategorySelect").addEventListener("change", function() {
     const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
     const promptSelect = document.getElementById("promptToMoveSelect");
@@ -2705,20 +2731,20 @@ window.executePromptMoveBetweenSubcategories = function() {
   const sourceSubcategoryId = document.getElementById("sourceSubcategorySelect").value;
   const targetSubcategoryId = document.getElementById("targetSubcategorySelect").value;
   const promptId = document.getElementById("promptToMoveSelect").value;
-  
+
   if (!sourceSubcategoryId || !targetSubcategoryId || !promptId) {
     alert("Seleziona tutti i campi richiesti.");
     return;
   }
-  
+
   pushToHistory();
-  
+
   // Find source and target subcategories
   let sourceSubcategory = null;
   let targetSubcategory = null;
   let sourceCategoryId = null;
   let targetCategoryId = null;
-  
+
   categories.forEach(category => {
     if (category.subcategories) {
       category.subcategories.forEach(subcat => {
@@ -2733,33 +2759,33 @@ window.executePromptMoveBetweenSubcategories = function() {
       });
     }
   });
-  
+
   if (!sourceSubcategory || !targetSubcategory) {
     alert("Errore: sottocategoria non trovata.");
     return;
   }
-  
+
   // Find and remove the prompt from source subcategory
   const promptIndex = sourceSubcategory.prompts.findIndex(p => p.id === promptId);
   if (promptIndex === -1) {
     alert("Errore: prompt non trovato nella sottocategoria di origine.");
     return;
   }
-  
+
   const promptToMove = sourceSubcategory.prompts.splice(promptIndex, 1)[0];
-  
+
   // Add prompt to target subcategory
   targetSubcategory.prompts.push(promptToMove);
-  
+
   sortCategoriesAndPrompts();
   saveToLocalStorage();
   renderCategories();
-  
+
   // Close dialog
   closeMovePromptBetweenSubcategoriesDialog();
-  
+
   alert(translations[currentLanguage]["promptMovedBetweenSubcategories"]);
-  
+
   // Open target category to show the moved prompt
   if (targetCategoryId) {
     toggleCategoryBox(targetCategoryId);
@@ -2776,14 +2802,14 @@ window.closeMovePromptBetweenSubcategoriesDialog = function() {
 document.getElementById("deleteAllBtn").onclick = function() {
   const confirmationText = currentLanguage === "it" ? "ELIMINA TUTTO" : "DELETE ALL";
   const userInput = prompt(translations[currentLanguage]["deleteAllConfirmation"]);
-  
+
   if (userInput === confirmationText) {
     // Clear all data
     pushToHistory();
     categories.length = 0;
     historyStack.length = 0;
     futureStack.length = 0;
-    
+
     // Clear all storage methods
     if (isLocalStorageAvailable()) {
       try {
@@ -2793,7 +2819,7 @@ document.getElementById("deleteAllBtn").onclick = function() {
         console.warn("Errore nella rimozione da localStorage:", e.message);
       }
     }
-    
+
     if (isSessionStorageAvailable()) {
       try {
         sessionStorage.removeItem("categories");
@@ -2802,22 +2828,22 @@ document.getElementById("deleteAllBtn").onclick = function() {
         console.warn("Errore nella rimozione da sessionStorage:", e.message);
       }
     }
-    
+
     // Clear fallback storage
     fallbackStorage = {};
-    
+
     // Clear UI
     document.getElementById("prompts-display-container").innerHTML = "";
     document.getElementById("category-boxes-container").innerHTML = "";
     document.getElementById("categories").innerHTML = "";
-    
+
     // Reset theme to default
     currentTheme = "dark";
     applyTheme();
-    
+
     // Re-render empty state
     renderCategories();
-    
+
     alert(translations[currentLanguage]["deleteAllSuccess"]);
     console.log("✅ Tutti i dati sono stati eliminati con successo");
   } else if (userInput !== null) {
@@ -2836,6 +2862,123 @@ document.getElementById("movePromptBetweenSubcategoriesBtn").onclick = function(
 loadFromLocalStorage();
 pushToHistory();
 translatePage();
+
+function showMoveToSubcategoryDialog(sourceCategoryId, promptId, sourceSubcategoryId = null) {
+    const sourceCategory = categories.find(c => c.id === sourceCategoryId);
+    if (!sourceCategory) {
+        alert("Categoria di origine non trovata.");
+        return;
+    }
+
+    if (!sourceCategory.subcategories || sourceCategory.subcategories.length === 0) {
+        alert("Nessuna sottocategoria disponibile in questa categoria.");
+        return;
+    }
+
+    let subcategoriesHtml = "";
+    sourceCategory.subcategories.forEach(subcat => {
+        subcategoriesHtml += `<option value="${subcat.id}">${subcat.name}</option>`;
+    });
+
+    const dialogHtml = `
+        <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color); min-width: 400px;">
+            <h4>Sposta prompt in sottocategoria</h4>
+            <p>Seleziona la sottocategoria di destinazione:</p>
+            <select id="targetSubcategorySelect" style="width: 100%; padding: 10px; margin: 10px 0; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
+                ${subcategoriesHtml}
+            </select>
+            <div style="margin-top: 15px;">
+                <button onclick="executeMoveToSubcategory('${sourceCategoryId}', '${promptId}', '${sourceSubcategoryId}', document.getElementById('targetSubcategorySelect').value)" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;">Sposta</button>
+                <button onclick="closeMoveToSubcategoryDialog()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">Annulla</button>
+            </div>
+        </div>
+    `;
+
+    // Create overlay
+    const overlay = document.createElement("div");
+    overlay.id = "moveToSubcategoryOverlay";
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+    const dialog = document.createElement("div");
+    dialog.innerHTML = dialogHtml;
+    dialog.style.cssText = "max-width: 500px; width: 90%;";
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+}
+
+window.executeMoveToSubcategory = function (sourceCategoryId, promptId, sourceSubcategoryId, targetSubcategoryId) {
+    if (!targetSubcategoryId) {
+        alert("Seleziona una sottocategoria di destinazione.");
+        return;
+    }
+
+    pushToHistory();
+
+    const sourceCategory = categories.find(c => c.id === sourceCategoryId);
+    if (!sourceCategory) {
+        alert("Categoria di origine non trovata.");
+        return;
+    }
+
+    const targetSubcategory = sourceCategory.subcategories.find(subcat => subcat.id === targetSubcategoryId);
+    if (!targetSubcategory) {
+        alert("Sottocategoria di destinazione non trovata.");
+        return;
+    }
+
+    let promptToMove;
+    if (sourceSubcategoryId) {
+        // Remove from source subcategory
+        const sourceSubcategory = sourceCategory.subcategories.find(subcat => subcat.id === sourceSubcategoryId);
+        if (!sourceSubcategory) {
+            alert("Sottocategoria di origine non trovata.");
+            return;
+        }
+        const promptIndex = sourceSubcategory.prompts.findIndex(p => p.id === promptId);
+        if (promptIndex === -1) {
+            alert("Prompt non trovato nella sottocategoria di origine.");
+            return;
+        }
+        promptToMove = sourceSubcategory.prompts.splice(promptIndex, 1)[0];
+    } else {
+        // Remove from main category
+        const promptIndex = sourceCategory.prompts.findIndex(p => p.id === promptId);
+        if (promptIndex === -1) {
+            alert("Prompt non trovato nella categoria di origine.");
+            return;
+        }
+        promptToMove = sourceCategory.prompts.splice(promptIndex, 1)[0];
+    }
+
+    // Add to target subcategory
+    targetSubcategory.prompts.push(promptToMove);
+
+    sortCategoriesAndPrompts();
+    saveToLocalStorage();
+    renderCategories();
+
+    closeMoveToSubcategoryDialog();
+    alert("Prompt spostato con successo nella sottocategoria!");
+};
+
+window.closeMoveToSubcategoryDialog = function () {
+    const overlay = document.getElementById("moveToSubcategoryOverlay");
+    if (overlay) {
+        document.body.removeChild(overlay);
+    }
+};
 </script>
 </body>
 </html>
