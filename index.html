@@ -898,7 +898,7 @@ function loadFromLocalStorage() {
       // Debug: log subcategories being loaded
       parsedData.forEach(c => {
         if (c.subcategories && c.subcategories.length > 0) {
-          console.log(`Caricando categoria "${c.name}" con ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
+          console.log('Caricando categoria "' + c.name + '" con ' + c.subcategories.length + ' sottocategorie:', c.subcategories.map(s => s.name));
         }
       });
 
@@ -959,7 +959,7 @@ function saveToLocalStorage() {
   // Debug: log subcategories being saved
   categories.forEach(c => {
     if (c.subcategories && c.subcategories.length > 0) {
-      console.log(`Categoria "${c.name}" ha ${c.subcategories.length} sottocategorie:`, c.subcategories.map(s => s.name));
+      console.log('Categoria "' + c.name + '" ha ' + c.subcategories.length + ' sottocategorie:', c.subcategories.map(s => s.name));
     }
   });
 
