@@ -419,8 +419,11 @@ a:hover {
         <button id="deleteAllBtn" class="btn btn-danger mr-2">
           <i class="fas fa-trash-alt"></i> <span data-translate="deleteAll">Elimina Tutto</span>
         </button>
-        <button id="moveCategoryBtn" class="btn btn-warning">
+        <button id="moveCategoryBtn" class="btn btn-warning mr-2">
           <i class="fas fa-arrows-alt"></i> <span data-translate="moveCategory">Sposta Categoria</span>
+        </button>
+        <button id="movePromptBetweenSubcategoriesBtn" class="btn btn-info">
+          <i class="fas fa-exchange-alt"></i> <span data-translate="movePromptBetweenSubcategories">Sposta tra Sottocategorie</span>
         </button>
       </div>
 
@@ -566,7 +569,14 @@ const categories = [],
           selectDestinationCategory: "Select destination category:",
           categoryMovedSuccessfully: "Category moved successfully as subcategory!",
           cannotMoveToItself: "Cannot move category to itself.",
-          noCategoriesAvailable: "No categories available to move."
+          noCategoriesAvailable: "No categories available to move.",
+          movePromptBetweenSubcategories: "Move Between Subcategories",
+          selectSourceSubcategory: "Select source subcategory:",
+          selectTargetSubcategory: "Select target subcategory:",
+          selectPromptToMove: "Select prompt to move:",
+          promptMovedBetweenSubcategories: "Prompt moved successfully between subcategories!",
+          noSubcategoriesAvailable: "No subcategories available for this operation.",
+          noPromptsInSubcategory: "No prompts available in the selected subcategory."
         },
         it: {
           promptSaver: "Prompt Saver",
@@ -622,7 +632,14 @@ const categories = [],
           selectDestinationCategory: "Seleziona categoria di destinazione:",
           categoryMovedSuccessfully: "Categoria spostata con successo come sottocategoria!",
           cannotMoveToItself: "Non è possibile spostare una categoria su se stessa.",
-          noCategoriesAvailable: "Nessuna categoria disponibile da spostare."
+          noCategoriesAvailable: "Nessuna categoria disponibile da spostare.",
+          movePromptBetweenSubcategories: "Sposta tra Sottocategorie",
+          selectSourceSubcategory: "Seleziona sottocategoria di origine:",
+          selectTargetSubcategory: "Seleziona sottocategoria di destinazione:",
+          selectPromptToMove: "Seleziona prompt da spostare:",
+          promptMovedBetweenSubcategories: "Prompt spostato con successo tra sottocategorie!",
+          noSubcategoriesAvailable: "Nessuna sottocategoria disponibile per questa operazione.",
+          noPromptsInSubcategory: "Nessun prompt disponibile nella sottocategoria selezionata."
         }
       };
 
@@ -2537,6 +2554,225 @@ window.closeMoveCategoryDialog = function() {
   }
 };
 
+function showMovePromptBetweenSubcategoriesDialog() {
+  // Collect all subcategories from all categories
+  const allSubcategories = [];
+  categories.forEach(category => {
+    if (category.subcategories) {
+      category.subcategories.forEach(subcat => {
+        allSubcategories.push({
+          id: subcat.id,
+          name: subcat.name,
+          categoryName: category.name,
+          categoryId: category.id,
+          prompts: subcat.prompts
+        });
+      });
+    }
+  });
+  
+  if (allSubcategories.length < 2) {
+    alert(translations[currentLanguage]["noSubcategoriesAvailable"]);
+    return;
+  }
+  
+  let sourceSubcategoriesHtml = "";
+  allSubcategories.forEach(subcat => {
+    sourceSubcategoriesHtml += `<option value="${subcat.id}" data-category-id="${subcat.categoryId}">${subcat.categoryName} > ${subcat.name} (${subcat.prompts.length} prompts)</option>`;
+  });
+  
+  const dialogHtml = `
+    <div style="background: var(--secondary-background-color); padding: 20px; border-radius: 5px; color: var(--text-color); min-width: 500px; max-height: 80vh; overflow-y: auto;">
+      <h4>${translations[currentLanguage]["movePromptBetweenSubcategories"]}</h4>
+      
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectSourceSubcategory"]}</label>
+        <select id="sourceSubcategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;">
+          <option value="">-- Seleziona sottocategoria di origine --</option>
+          ${sourceSubcategoriesHtml}
+        </select>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectPromptToMove"]}</label>
+        <select id="promptToMoveSelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;" disabled>
+          <option value="">-- Prima seleziona una sottocategoria --</option>
+        </select>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">${translations[currentLanguage]["selectTargetSubcategory"]}</label>
+        <select id="targetSubcategorySelect" style="width: 100%; padding: 10px; background: var(--input-background-color); color: var(--input-text-color); border: 1px solid #ccc; border-radius: 3px;" disabled>
+          <option value="">-- Prima seleziona sottocategoria di origine --</option>
+        </select>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button onclick="executePromptMoveBetweenSubcategories()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 3px; margin-right: 10px; cursor: pointer;" disabled id="executeSubcategoryMoveBtn">
+          <i class="fas fa-exchange-alt"></i> Sposta Prompt
+        </button>
+        <button onclick="closeMovePromptBetweenSubcategoriesDialog()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+          <i class="fas fa-times"></i> Annulla
+        </button>
+      </div>
+      
+      <div style="margin-top: 15px; padding: 10px; background: var(--tertiary-background-color); border-radius: 3px; font-size: 14px;">
+        <i class="fas fa-info-circle"></i> <strong>Info:</strong> Questa funzione sposta un prompt da una sottocategoria a un'altra sottocategoria.
+      </div>
+    </div>
+  `;
+  
+  // Create overlay
+  const overlay = document.createElement("div");
+  overlay.id = "movePromptSubcategoryOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  `;
+  
+  const dialog = document.createElement("div");
+  dialog.innerHTML = dialogHtml;
+  dialog.style.cssText = "max-width: 600px; width: 90%;";
+  
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  
+  // Add event listeners
+  document.getElementById("sourceSubcategorySelect").addEventListener("change", function() {
+    const sourceSubcategoryId = this.value;
+    const promptSelect = document.getElementById("promptToMoveSelect");
+    const targetSelect = document.getElementById("targetSubcategorySelect");
+    const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
+    
+    // Reset and disable dependent selects
+    promptSelect.innerHTML = '<option value="">-- Seleziona prompt da spostare --</option>';
+    targetSelect.innerHTML = '<option value="">-- Seleziona sottocategoria di destinazione --</option>';
+    promptSelect.disabled = true;
+    targetSelect.disabled = true;
+    executeBtn.disabled = true;
+    
+    if (sourceSubcategoryId) {
+      // Find the selected subcategory and populate prompts
+      const sourceSubcat = allSubcategories.find(s => s.id === sourceSubcategoryId);
+      if (sourceSubcat && sourceSubcat.prompts.length > 0) {
+        promptSelect.disabled = false;
+        sourceSubcat.prompts.forEach(prompt => {
+          const option = document.createElement("option");
+          option.value = prompt.id;
+          option.textContent = prompt.title;
+          promptSelect.appendChild(option);
+        });
+        
+        // Populate target subcategories (exclude source)
+        targetSelect.disabled = false;
+        allSubcategories.forEach(subcat => {
+          if (subcat.id !== sourceSubcategoryId) {
+            const option = document.createElement("option");
+            option.value = subcat.id;
+            option.setAttribute("data-category-id", subcat.categoryId);
+            option.textContent = `${subcat.categoryName} > ${subcat.name}`;
+            targetSelect.appendChild(option);
+          }
+        });
+      } else if (sourceSubcat) {
+        promptSelect.innerHTML = '<option value="">-- Nessun prompt in questa sottocategoria --</option>';
+      }
+    }
+  });
+  
+  document.getElementById("promptToMoveSelect").addEventListener("change", function() {
+    const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
+    const targetSelect = document.getElementById("targetSubcategorySelect");
+    executeBtn.disabled = !(this.value && targetSelect.value);
+  });
+  
+  document.getElementById("targetSubcategorySelect").addEventListener("change", function() {
+    const executeBtn = document.getElementById("executeSubcategoryMoveBtn");
+    const promptSelect = document.getElementById("promptToMoveSelect");
+    executeBtn.disabled = !(this.value && promptSelect.value);
+  });
+}
+
+window.executePromptMoveBetweenSubcategories = function() {
+  const sourceSubcategoryId = document.getElementById("sourceSubcategorySelect").value;
+  const targetSubcategoryId = document.getElementById("targetSubcategorySelect").value;
+  const promptId = document.getElementById("promptToMoveSelect").value;
+  
+  if (!sourceSubcategoryId || !targetSubcategoryId || !promptId) {
+    alert("Seleziona tutti i campi richiesti.");
+    return;
+  }
+  
+  pushToHistory();
+  
+  // Find source and target subcategories
+  let sourceSubcategory = null;
+  let targetSubcategory = null;
+  let sourceCategoryId = null;
+  let targetCategoryId = null;
+  
+  categories.forEach(category => {
+    if (category.subcategories) {
+      category.subcategories.forEach(subcat => {
+        if (subcat.id === sourceSubcategoryId) {
+          sourceSubcategory = subcat;
+          sourceCategoryId = category.id;
+        }
+        if (subcat.id === targetSubcategoryId) {
+          targetSubcategory = subcat;
+          targetCategoryId = category.id;
+        }
+      });
+    }
+  });
+  
+  if (!sourceSubcategory || !targetSubcategory) {
+    alert("Errore: sottocategoria non trovata.");
+    return;
+  }
+  
+  // Find and remove the prompt from source subcategory
+  const promptIndex = sourceSubcategory.prompts.findIndex(p => p.id === promptId);
+  if (promptIndex === -1) {
+    alert("Errore: prompt non trovato nella sottocategoria di origine.");
+    return;
+  }
+  
+  const promptToMove = sourceSubcategory.prompts.splice(promptIndex, 1)[0];
+  
+  // Add prompt to target subcategory
+  targetSubcategory.prompts.push(promptToMove);
+  
+  sortCategoriesAndPrompts();
+  saveToLocalStorage();
+  renderCategories();
+  
+  // Close dialog
+  closeMovePromptBetweenSubcategoriesDialog();
+  
+  alert(translations[currentLanguage]["promptMovedBetweenSubcategories"]);
+  
+  // Open target category to show the moved prompt
+  if (targetCategoryId) {
+    toggleCategoryBox(targetCategoryId);
+  }
+};
+
+window.closeMovePromptBetweenSubcategoriesDialog = function() {
+  const overlay = document.getElementById("movePromptSubcategoryOverlay");
+  if (overlay) {
+    document.body.removeChild(overlay);
+  }
+};
+
 document.getElementById("deleteAllBtn").onclick = function() {
   const confirmationText = currentLanguage === "it" ? "ELIMINA TUTTO" : "DELETE ALL";
   const userInput = prompt(translations[currentLanguage]["deleteAllConfirmation"]);
@@ -2591,6 +2827,10 @@ document.getElementById("deleteAllBtn").onclick = function() {
 
 document.getElementById("moveCategoryBtn").onclick = function() {
   showMoveCategoryDialog();
+};
+
+document.getElementById("movePromptBetweenSubcategoriesBtn").onclick = function() {
+  showMovePromptBetweenSubcategoriesDialog();
 };
 
 loadFromLocalStorage();
