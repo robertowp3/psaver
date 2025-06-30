@@ -1157,6 +1157,15 @@ function createCategoryBox(c) {
         displaySubcategoryPrompts(subCat, c.id, cb);
       };
 
+      const editSubBtn = document.createElement("button");
+      editSubBtn.className = "btn btn-info btn-sm ml-1";
+      editSubBtn.innerHTML = '<i class="fas fa-edit"></i>';
+      editSubBtn.title = "Modifica sottocategoria";
+      editSubBtn.onclick = (e) => {
+        e.stopPropagation();
+        editSubcategoryName(c.id, subCat.id, subBtn);
+      };
+
       const deleteSubBtn = document.createElement("button");
       deleteSubBtn.className = "btn btn-danger btn-sm ml-1";
       deleteSubBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -1167,6 +1176,7 @@ function createCategoryBox(c) {
       };
 
       subCatDiv.appendChild(subBtn);
+      subCatDiv.appendChild(editSubBtn);
       subCatDiv.appendChild(deleteSubBtn);
       subCatButtons.appendChild(subCatDiv);
     });
@@ -1492,6 +1502,38 @@ function deletePrompt(cId, pId, subCatId = null) {
         c.prompts.splice(i, 1);
         saveToLocalStorage();
         renderCategories();
+      }
+    }
+  }
+}
+
+function editSubcategoryName(cId, subCatId, buttonElement) {
+  const c = categories.find(cc => cc.id === cId);
+  if (c && c.subcategories) {
+    const subCat = c.subcategories.find(sc => sc.id === subCatId);
+    if (subCat) {
+      const newName = prompt("Modifica nome sottocategoria:", subCat.name);
+      if (newName && newName.trim() !== "" && newName.trim() !== subCat.name) {
+        const trimmedName = newName.trim();
+        
+        // Check if name already exists
+        const nameExists = c.subcategories.some(sc => sc.id !== subCatId && sc.name.toLowerCase() === trimmedName.toLowerCase());
+        if (nameExists) {
+          alert("Una sottocategoria con questo nome esiste già.");
+          return;
+        }
+        
+        pushToHistory();
+        subCat.name = sanitizeHTML(trimmedName);
+        sortCategoriesAndPrompts();
+        saveToLocalStorage();
+        
+        // Update the button text immediately
+        buttonElement.textContent = subCat.name;
+        
+        // Re-render to ensure consistency
+        renderCategories();
+        toggleCategoryBox(cId);
       }
     }
   }
