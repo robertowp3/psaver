@@ -312,6 +312,17 @@ a:hover {
   transform: scale(1.05);
 }
 
+.prompt-highlighted {
+  background-color: #dc3545 !important;
+  color: white !important;
+  border-color: #dc3545 !important;
+}
+
+.prompt-highlighted:hover {
+  background-color: #c82333 !important;
+  color: white !important;
+}
+
 .prompt-content {
   transition: all 0.3s ease;
   cursor: pointer;
@@ -1099,12 +1110,14 @@ function createCategoryBox(c) {
         afBtn = createIconButton("secondary", "text-height", translations[currentLanguage]["increaseFont"]),
         favBtn = createIconButton("favorite", "star", translations[currentLanguage]["addToFavorites"]),
         moveBtn = createIconButton("warning", "exchange-alt", translations[currentLanguage]["movePrompt"]),
-        moveToSubBtn = createIconButton("info", "folder-open", "Sposta in Sottocategoria");
+        moveToSubBtn = createIconButton("info", "folder-open", "Sposta in Sottocategoria"),
+        highlightBtn = createIconButton("danger", "highlighter", "Evidenzia con background rosso");
   favBtn.classList.add("btn-favorite");
   moveBtn.classList.add("btn-move");
   moveToSubBtn.classList.add("btn-move-subcategory");
+  highlightBtn.classList.add("btn-highlight");
 
-  actDiv.append(aeBtn, acBtn, asBtn, favBtn, moveBtn, moveToSubBtn, adBtn, afBtn);
+  actDiv.append(aeBtn, acBtn, asBtn, favBtn, moveBtn, moveToSubBtn, highlightBtn, adBtn, afBtn);
   cb.appendChild(actDiv);
   cb.actionsDiv = actDiv;
 
@@ -1236,6 +1249,12 @@ function createCategoryBox(c) {
       showMoveToSubcategoryDialog(c.id, cb.selectedPrompt.id, subCatId);
     }
   };
+  highlightBtn.onclick = e => {
+    e.stopPropagation();
+    if (cb.selectedPrompt) {
+      togglePromptHighlight(cb.selectedPrompt, highlightBtn);
+    }
+  };
 
   return cb;
 }
@@ -1263,6 +1282,12 @@ function createPromptTitleDiv(p, cId) {
   const d = document.createElement("button");
   d.className = "btn btn-secondary mr-2 mb-2";
   d.innerHTML = p.title;
+  
+  // Apply highlight if prompt is marked as highlighted
+  if (p.highlighted) {
+    d.classList.add("prompt-highlighted");
+  }
+  
   d.onclick = () => {
     clearSearchResults();
     displaySelectedPrompt(d, p, cId);
@@ -1299,6 +1324,12 @@ function displaySelectedPrompt(d, p, cId) {
   favBtn.title = p.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+    
+  const highlightBtn = cb.actionsDiv.querySelector(".btn-highlight");
+  if (highlightBtn) {
+    highlightBtn.style.backgroundColor = p.highlighted ? "#28a745" : "#dc3545";
+    highlightBtn.title = p.highlighted ? "Rimuovi evidenziazione" : "Evidenzia con background rosso";
+  }
 }
 
 function createPromptContent(p, cId) {
@@ -1982,6 +2013,40 @@ function toggleFavorite(p, fb) {
     : translations[currentLanguage]["addToFavorites"];
 }
 
+function togglePromptHighlight(p, hb) {
+  pushToHistory();
+  p.highlighted = !p.highlighted;
+  saveToLocalStorage();
+  
+  // Update button appearance
+  hb.style.backgroundColor = p.highlighted ? "#28a745" : "#dc3545";
+  hb.title = p.highlighted ? "Rimuovi evidenziazione" : "Evidenzia con background rosso";
+  
+  // Find and update the prompt title button in the current view
+  const promptButtons = document.querySelectorAll('.btn-secondary');
+  promptButtons.forEach(btn => {
+    if (btn.textContent === p.title) {
+      if (p.highlighted) {
+        btn.classList.add("prompt-highlighted");
+      } else {
+        btn.classList.remove("prompt-highlighted");
+      }
+    }
+  });
+  
+  // Update subcategory prompt buttons too
+  const subcatButtons = document.querySelectorAll('.subcategory-prompt');
+  subcatButtons.forEach(btn => {
+    if (btn.textContent === p.title) {
+      if (p.highlighted) {
+        btn.classList.add("prompt-highlighted");
+      } else {
+        btn.classList.remove("prompt-highlighted");
+      }
+    }
+  });
+}
+
 function toggleFavoritesView(b) {
   clearSearchResults();
   document.querySelectorAll(".category-box").forEach(x => x.style.display = "none");
@@ -2104,6 +2169,12 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
   favBtn.title = prompt.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+    
+  const highlightBtn = categoryBox.actionsDiv.querySelector(".btn-highlight");
+  if (highlightBtn) {
+    highlightBtn.style.backgroundColor = prompt.highlighted ? "#28a745" : "#dc3545";
+    highlightBtn.title = prompt.highlighted ? "Rimuovi evidenziazione" : "Evidenzia con background rosso";
+  }
 }
 
 function displaySearchPromptContent(result, container) {
