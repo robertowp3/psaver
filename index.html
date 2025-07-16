@@ -1335,6 +1335,7 @@ function displaySelectedPrompt(d, p, cId) {
   favBtn.title = p.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+  favBtn.style.backgroundColor = p.favorite ? "#FFD700" : "#6c757d";
     
   const highlightBtn = cb.actionsDiv.querySelector(".btn-highlight");
   if (highlightBtn) {
@@ -2017,11 +2018,19 @@ function sharePrompt(p) {
 function toggleFavorite(p, fb) {
   pushToHistory();
   p.favorite = !p.favorite;
-  saveToLocalStorage();
+  
+  // Update button appearance immediately
   fb.innerHTML = p.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
   fb.title = p.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+  fb.style.backgroundColor = p.favorite ? "#FFD700" : "#6c757d";
+  
+  // Save to storage
+  saveToLocalStorage();
+  
+  // Log for debugging
+  console.log(`Prompt "${p.title}" ${p.favorite ? 'aggiunto ai' : 'rimosso dai'} preferiti`);
 }
 
 function togglePromptHighlight(p, hb) {
@@ -2180,6 +2189,7 @@ function displaySubcategoryPrompt(div, prompt, categoryId, subcategoryId, catego
   favBtn.title = prompt.favorite
     ? translations[currentLanguage]["removeFromFavorites"]
     : translations[currentLanguage]["addToFavorites"];
+  favBtn.style.backgroundColor = prompt.favorite ? "#FFD700" : "#6c757d";
     
   const highlightBtn = categoryBox.actionsDiv.querySelector(".btn-highlight");
   if (highlightBtn) {
