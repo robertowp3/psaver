@@ -851,7 +851,7 @@ function loadFromLocalStorage() {
   if (isLocalStorageAvailable()) {
     try {
       storageData = localStorage.getItem("categories");
-      if (storageData) {
+      if (storageData && storageData !== 'null' && storageData !== '[]') {
         storageMethod = "localStorage";
         console.log("Dati caricati da localStorage");
       }
@@ -864,7 +864,7 @@ function loadFromLocalStorage() {
   if (!storageData && isSessionStorageAvailable()) {
     try {
       storageData = sessionStorage.getItem("categories");
-      if (storageData) {
+      if (storageData && storageData !== 'null' && storageData !== '[]') {
         storageMethod = "sessionStorage";
         console.log("Dati caricati da sessionStorage");
       }
@@ -874,61 +874,56 @@ function loadFromLocalStorage() {
   }
 
   // Method 3: Try fallback storage
-  if (!storageData && fallbackStorage.categories) {
+  if (!storageData && fallbackStorage.categories && fallbackStorage.categories !== '[]') {
     storageData = fallbackStorage.categories;
     storageMethod = "fallbackStorage";
     console.log("Dati caricati da fallback storage");
   }
 
-  // Show warning only if no storage method worked
-  if (!storageData && !isLocalStorageAvailable() && !isSessionStorageAvailable()) {
-    const isBrave = navigator.userAgent.includes('Brave') || 
-                   (navigator.brave && navigator.brave.isBrave);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-    let warningMessage = "⚠️ Impossibile salvare i dati permanentemente.\n\n";
-
-    if (isBrave) {
-      warningMessage += "🛡️ BRAVE BROWSER RILEVATO:\n";
-      warningMessage += "1. Clicca l'icona dello scudo nella barra degli indirizzi\n";
-      warningMessage += "2. Clicca 'Avanzate'\n";
-      warningMessage += "3. Disabilita 'Blocca script di tracciamento'\n";
-      warningMessage += "4. Ricarica la pagina\n\n";
-      warningMessage += "OPPURE:\n";
-      warningMessage += "• Vai in Impostazioni Brave → Scudi\n";
-      warningMessage += "• Aggiungi questo sito alle eccezioni\n\n";
-    } else if (isSafari) {
-      warningMessage += "🍎 SAFARI RILEVATO:\n";
-      warningMessage += "1. Safari → Preferenze → Privacy\n";
-      warningMessage += "2. Disabilita 'Impedisci monitoraggio cross-site'\n";
-      warningMessage += "3. Ricarica la pagina\n\n";
-    }
-
-    warningMessage += "💡 I dati saranno salvati solo per questa sessione.";
-    alert(warningMessage);
-  }
-
   console.log("Caricamento da " + (storageMethod || "nessuna fonte") + ":", storageData ? "Dati trovati" : "Nessun dato trovato");
 
-  if (storageData) {
+  if (storageData && storageData !== '[]' && storageData !== 'null') {
     try {
       const parsedData = JSON.parse(storageData);
-      console.log("Categorie caricate:", parsedData.length);
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        console.log("Categorie caricate:", parsedData.length);
 
-      // Debug: log subcategories being loaded
-      parsedData.forEach(c => {
-        if (c.subcategories && c.subcategories.length > 0) {
-          console.log('Caricando categoria "' + c.name + '" con ' + c.subcategories.length + ' sottocategorie:', c.subcategories.map(s => s.name));
-        }
-      });
+        // Debug: log subcategories being loaded
+        parsedData.forEach(c => {
+          if (c.subcategories && c.subcategories.length > 0) {
+            console.log('Caricando categoria "' + c.name + '" con ' + c.subcategories.length + ' sottocategorie:', c.subcategories.map(s => s.name));
+          }
+        });
 
-      loadCategoriesData(parsedData);
+        loadCategoriesData(parsedData);
+        return; // Successfully loaded data
+      }
     } catch(e) {
       console.error("Errore nel parsing dei dati:", e);
     }
-  } else {
-    console.log("🔄 Nessun dato trovato nei sistemi di storage. Inizializzando con array vuoto.");
   }
+  
+  console.log("🔄 Nessun dato valido trovato. Inizializzando con array vuoto.");
+  
+  // Initialize with default data if no valid data found
+  const defaultData = [
+    {
+      id: generateUniqueId(),
+      name: "Categoria di Test",
+      prompts: [
+        {
+          id: generateUniqueId(),
+          title: "Prompt di Test",
+          purpose: "Test della funzionalità preferiti",
+          description: "Questo è un prompt di test per verificare che i preferiti funzionino correttamente.",
+          tags: ["test"],
+          favorite: false
+        }
+      ]
+    }
+  ];
+  
+  loadCategoriesData(defaultData);
 }
 
 function loadCategoriesData(data) {
@@ -998,26 +993,31 @@ function saveToLocalStorage() {
       localStorage.setItem("categories", dataToSave);
       console.log("✅ Dati salvati nel localStorage. Numero categorie:", categories.length);
 
-      // Verify save was successful and count favorites
+      // Verify save was successful
       const savedData = localStorage.getItem("categories");
       if (savedData) {
-        const parsed = JSON.parse(savedData);
-        let savedFavorites = 0;
-        parsed.forEach(c => {
-          c.prompts.forEach(p => {
-            if (p.favorite) savedFavorites++;
-          });
-          if (c.subcategories) {
-            c.subcategories.forEach(sub => {
-              sub.prompts.forEach(p => {
-                if (p.favorite) savedFavorites++;
-              });
+        try {
+          const parsed = JSON.parse(savedData);
+          let savedFavorites = 0;
+          parsed.forEach(c => {
+            c.prompts.forEach(p => {
+              if (p.favorite) savedFavorites++;
             });
-          }
-        });
-        console.log("✅ Verifica salvataggio riuscita. Categorie salvate:", parsed.length, "Preferiti salvati:", savedFavorites);
+            if (c.subcategories) {
+              c.subcategories.forEach(sub => {
+                sub.prompts.forEach(p => {
+                  if (p.favorite) savedFavorites++;
+                });
+              });
+            }
+          });
+          console.log("✅ Verifica salvataggio riuscita. Categorie salvate:", parsed.length, "Preferiti salvati:", savedFavorites);
+          saved = true;
+        } catch(parseError) {
+          console.error("❌ Errore nella verifica del salvataggio:", parseError);
+          localStorage.removeItem("categories"); // Remove corrupted data
+        }
       }
-      saved = true;
     } catch (error) {
       console.error("❌ Errore nel salvataggio localStorage:", error.message);
       if (error.name === 'QuotaExceededError') {
@@ -1042,6 +1042,29 @@ function saveToLocalStorage() {
 
   if (!saved) {
     console.warn("🔄 Dati salvati solo in memoria temporanea (fallback storage).");
+    
+    // Show user notification that data won't persist
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: #ffc107;
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 10000;
+      font-weight: bold;
+      max-width: 300px;
+    `;
+    notification.innerHTML = '⚠️ I dati sono salvati solo temporaneamente. Fai un backup per non perderli!';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 5000);
   }
 }
 
@@ -2063,101 +2086,35 @@ function toggleFavorite(p, fb) {
     fb.style.boxShadow = "none";
   }
   
-  // Save to storage immediately - try multiple methods
+  // Save immediately and force update
   saveToLocalStorage();
   
-  // Also force immediate save to all available storage methods
-  const dataToSave = JSON.stringify(categories);
+  // Show immediate feedback to user
+  const feedbackMessage = p.favorite ? "Aggiunto ai preferiti!" : "Rimosso dai preferiti!";
   
-  // Try localStorage
-  if (isLocalStorageAvailable()) {
-    try {
-      localStorage.setItem("categories", dataToSave);
-      console.log("✅ Preferiti salvati in localStorage");
-    } catch(e) {
-      console.warn("❌ Errore localStorage:", e.message);
-    }
-  }
+  // Create temporary visual feedback
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${p.favorite ? '#28a745' : '#dc3545'};
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 10000;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  `;
+  notification.textContent = feedbackMessage;
+  document.body.appendChild(notification);
   
-  // Try sessionStorage as backup
-  if (isSessionStorageAvailable()) {
-    try {
-      sessionStorage.setItem("categories", dataToSave);
-      console.log("✅ Preferiti salvati in sessionStorage");
-    } catch(e) {
-      console.warn("❌ Errore sessionStorage:", e.message);
-    }
-  }
-  
-  // Always save to fallback storage
-  fallbackStorage.categories = dataToSave;
-  console.log("✅ Preferiti salvati in fallback storage");
-  
-  // Verify the save worked by checking all storage methods
   setTimeout(() => {
-    let verifyFavorite = false;
-    let storageUsed = "nessuno";
-    
-    // Check localStorage first
-    if (isLocalStorageAvailable()) {
-      try {
-        const savedData = localStorage.getItem("categories");
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          categories.forEach(c => {
-            const foundPrompt = c.prompts.find(prompt => prompt.id === p.id);
-            if (foundPrompt) {
-              verifyFavorite = foundPrompt.favorite;
-              storageUsed = "localStorage";
-            }
-            if (c.subcategories) {
-              c.subcategories.forEach(sub => {
-                const foundSubPrompt = sub.prompts.find(prompt => prompt.id === p.id);
-                if (foundSubPrompt) {
-                  verifyFavorite = foundSubPrompt.favorite;
-                  storageUsed = "localStorage";
-                }
-              });
-            }
-          });
-        }
-      } catch(e) {
-        console.warn("Errore nella verifica localStorage:", e);
-      }
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
     }
-    
-    // Check sessionStorage if localStorage failed
-    if (!verifyFavorite && isSessionStorageAvailable()) {
-      try {
-        const savedData = sessionStorage.getItem("categories");
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          categories.forEach(c => {
-            const foundPrompt = c.prompts.find(prompt => prompt.id === p.id);
-            if (foundPrompt) {
-              verifyFavorite = foundPrompt.favorite;
-              storageUsed = "sessionStorage";
-            }
-            if (c.subcategories) {
-              c.subcategories.forEach(sub => {
-                const foundSubPrompt = sub.prompts.find(prompt => prompt.id === p.id);
-                if (foundSubPrompt) {
-                  verifyFavorite = foundSubPrompt.favorite;
-                  storageUsed = "sessionStorage";
-                }
-              });
-            }
-          });
-        }
-      } catch(e) {
-        console.warn("Errore nella verifica sessionStorage:", e);
-      }
-    }
-    
-    console.log("✅ Verifica preferito salvato:", verifyFavorite, "usando:", storageUsed, "per prompt:", p.title);
-  }, 100);
+  }, 2000);
   
-  // Log for debugging
   console.log(`🌟 Prompt "${p.title}" ${p.favorite ? 'aggiunto ai' : 'rimosso dai'} preferiti`);
 }
 
