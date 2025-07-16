@@ -148,6 +148,15 @@ a:hover {
   background-color: var(--btn-favorite-bg-color);
 }
 
+.btn-favorite.active {
+  background-color: #FFD700 !important;
+  color: #000 !important;
+}
+
+.btn-favorite:hover {
+  background-color: #FFA500 !important;
+}
+
 .btn-import {
   background-color: var(--btn-import-bg-color);
   color: #fff;
@@ -1236,7 +1245,9 @@ function createCategoryBox(c) {
   };
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    if (cb.selectedPrompt) toggleFavorite(cb.selectedPrompt, favBtn);
+    if (cb.selectedPrompt) {
+      toggleFavorite(cb.selectedPrompt, favBtn);
+    }
   };
   moveBtn.onclick = e => {
     e.stopPropagation();
@@ -2199,6 +2210,7 @@ function displaySearchPromptContent(result, container) {
   // Update favorite button icon and styling
   favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
   favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+  favBtn.classList.add("btn-favorite");
 
   // Add click handlers with comprehensive functionality
   editBtn.onclick = (e) => {
@@ -2224,12 +2236,7 @@ function displaySearchPromptContent(result, container) {
 
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    pushToHistory();
-    result.prompt.favorite = !result.prompt.favorite;
-    saveToLocalStorage();
-    favBtn.innerHTML = result.prompt.favorite ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
-    favBtn.title = result.prompt.favorite ? translations[currentLanguage]["removeFromFavorites"] : translations[currentLanguage]["addToFavorites"];
-    favBtn.style.backgroundColor = result.prompt.favorite ? "#FFD700" : "#6c757d";
+    toggleFavorite(result.prompt, favBtn);
   };
 
   moveBtn.onclick = e => {
